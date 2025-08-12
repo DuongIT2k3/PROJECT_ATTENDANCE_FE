@@ -1,0 +1,15 @@
+@media (min-width: 768px) {
+	.mobileMenu {
+		display: none !important;
+	}
+}
+@media (max-width: 767px) {
+	.desktopMenu {
+		display: none !important;
+	}
+}
+@media (min-width: 768px) {
+	.desktopMenu {
+		display: flex !important;
+	}
+}
