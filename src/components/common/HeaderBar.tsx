@@ -10,34 +10,15 @@ const HeaderBar = ({ title = "Quản trị hệ thống CodeFarm" }: HeaderBarPr
 	return (
 		<Header
 			style={{
-				background: "rgba(255, 255, 255, 0.15)",
-				backdropFilter: "blur(15px)",
-				padding: "0 32px",
+				background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+				padding: "0 24px",
 				display: "flex",
 				alignItems: "center",
-				border: "2px solid rgba(255, 255, 255, 0.4)",
-				borderTop: "none",
-				borderLeft: "none",
-				borderRight: "none",
-				borderRadius: "0 0 25px 25px",
-				margin: "0",
-				boxShadow: "0 12px 40px rgba(0, 0, 0, 0.12)",
+				boxShadow: "0 2px 8px #f0f1f2",
 				minHeight: 64,
-				position: "relative",
-				zIndex: 10,
 			}}
 		>
-			<div 
-				style={{ 
-					fontWeight: 700, 
-					fontSize: 26, 
-					color: "#fff",
-					textShadow: "0 3px 6px rgba(0, 0, 0, 0.3)",
-					letterSpacing: "0.8px"
-				}}
-			>
-				{title}
-			</div>
+			<div style={{ fontWeight: 600, fontSize: 24, color: "#fff" }}>{title}</div>
 		</Header>
 	);
 };

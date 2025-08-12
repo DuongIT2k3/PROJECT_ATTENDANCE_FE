@@ -10,11 +10,6 @@ import BreadcrumbNav from "../common/BreadcrumNav";
 
 const adminMenu = [
 	{
-		key: "/super-admin/dashboard",
-		icon: <></>,
-		label: <Link to="/super-admin/dashboard">Dashboard</Link>,
-	},
-	{
 		key: "/super-admin/users",
 		icon: <TeamOutlined />,
 		label: <Link to="/super-admin/users">Quản lý người dùng</Link>,

@@ -22,19 +22,7 @@ const SiderMenu = ({ menuItems, selectedKeys, logoText = "CodeFarm", logoutPath 
 			collapsed={collapsed}
 			onCollapse={setCollapsed}
 			width={280}
-			style={{ 
-				background: "rgba(255, 255, 255, 0.98)", 
-				backdropFilter: "blur(25px)",
-				boxShadow: "6px 0 25px rgba(0, 0, 0, 0.15)",
-				border: "3px solid rgba(255, 255, 255, 0.6)",
-				borderLeft: "none",
-				borderTop: "none",
-				borderRadius: "0 25px 25px 0",
-				margin: "0",
-				height: "100vh",
-				position: "relative",
-				zIndex: 5,
-			}}
+			style={{ background: "#fff", boxShadow: "2px 0 8px #f0f1f2" }}
 		>
 			<div
 				style={{
@@ -42,18 +30,14 @@ const SiderMenu = ({ menuItems, selectedKeys, logoText = "CodeFarm", logoutPath 
 					display: "flex",
 					alignItems: "center",
 					justifyContent: collapsed ? "center" : "flex-start",
-					padding: collapsed ? 0 : "0 20px",
+					padding: collapsed ? 0 : "0 16px",
 					fontWeight: 800,
-					fontSize: 24,
-					background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-					WebkitBackgroundClip: "text",
-					WebkitTextFillColor: "transparent",
+					fontSize: 22,
+					color: "var(--primary)",
 					letterSpacing: 1,
-					marginBottom: 20,
-					borderBottom: "2px solid rgba(255, 255, 255, 0.3)",
-					position: "relative"
 				}}
 			>
+				
 				{!collapsed && logoText}
 			</div>
 
@@ -64,10 +48,10 @@ const SiderMenu = ({ menuItems, selectedKeys, logoText = "CodeFarm", logoutPath 
 				items={menuItems}
 				style={{
 					border: "none",
-					background: "transparent",
+					marginTop: 16,
 					fontSize: 16,
 					fontWeight: 600,
-					padding: "0 12px",
+					padding: "0 8px",
 				}}
 			/>
 
