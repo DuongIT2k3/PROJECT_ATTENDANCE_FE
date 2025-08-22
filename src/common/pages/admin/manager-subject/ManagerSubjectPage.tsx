@@ -17,7 +17,7 @@ const ManagerSubjectPage = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ["subjects", ...Object.values(query)],
-    queryFn: () => getAllSubjects({ includeDeleted: true ,limit: "5", ...query}),
+    queryFn: () => getAllSubjects({ limit: "5", ...query}),
   });
 
   const deleteMutation = useMutation({
@@ -38,8 +38,8 @@ const ManagerSubjectPage = () => {
       onError: () => message.error("Khôi phục môn học thất bại"),
     });
     
-    const subjects = data
-    const pagination = data?.meta
+    const subjects = data?.data;
+    const pagination = data?.meta;
 
     const options: DefaultOptionType[] = [
         { value: "", label: <Tag color='blue'>Tất cả</Tag> },

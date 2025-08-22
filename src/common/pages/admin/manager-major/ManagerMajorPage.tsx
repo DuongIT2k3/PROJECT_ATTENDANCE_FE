@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTable } from '../../../hooks/useTable';
 import { Major } from '../../../types/Major';
-import { getAllMajor, restoreMajor, softDeleteMajor } from '../../../services/majorService';
+import { getAllMajors, restoreMajor, softDeleteMajor } from '../../../services/majorService';
 import { Button, Input, message, Space, Tag, Select } from 'antd';
 import FormMajor from './FormMajor';
 import TableDisplay from '../../../../components/common/TableDisplay';
@@ -14,7 +14,7 @@ const ManagerMajorPage = () => {
   
   const { data, isLoading } = useQuery({
     queryKey: ["majors", ...Object.values(query)],
-    queryFn: () => getAllMajor({ includeDeleted: true, limit: "5", ...query }),
+    queryFn: () => getAllMajors({ includeDeleted: true, limit: "5", ...query }),
     retry: 0,
   });
 
