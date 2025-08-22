@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query"
 import { Provider } from "react-redux"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import store from "./store.ts"
+import store from "./common/store/store.ts"
 
 const queryClient = new QueryClient({
   defaultOptions: {

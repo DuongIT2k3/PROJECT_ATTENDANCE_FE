@@ -55,12 +55,13 @@ const ManagerMajorPage = () => {
          placeholder='Tìm kiếm theo mã, tên chuyên ngành, mô tả....'
          onSearch={(e) => onSubmitSearch(e)}
          onChange={(e) => onChangeSearchInput(e.target.value, { enableOnChangeSearch: true })}
+         defaultValue={query?.search}
          style={{ width: 300 }}
          />
          <Select
            allowClear
            value={query?.isDeleted}
-           onChange={(value) => onFilter({ isDeleted: value })}
+           onChange={(value) => onFilter({ isDeleted: value })} 
            placeholder="Trạng thái hoạt động"
            options={options}
            style={{ width: 150 }}

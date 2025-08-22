@@ -1,21 +1,19 @@
 import { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { debounce } from 'lodash';
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { convertObject } from '../utils/convertParamsToObject';
-
-
-interface Params {
-    [key: string]: string | undefined;
-}
+import { useFilter } from './useFilter';
+import { Params } from '../types/api';
 
 export const useTable = <T extends object>() => {
-    const [query, setQuery] = useState<Params>({ page: "1", limit: "10"});
+    const { query, resetFilter: reset, resetFilterExceptPageAndLimit, updateQueryParams  } = useFilter();
 
-    const resetFilter = () => {
-        setQuery({page: "1", limit: "10"});
-    };
-    const updateQueryParams = (newParams: Params) => {
-        setQuery((prev) => ({ ...prev, ...newParams}));
+    const resetFilter = (options?: { keepPageAndLimit?: boolean }) => {
+        if(options?.keepPageAndLimit) {
+         resetFilterExceptPageAndLimit();
+        }else {
+         reset();
+        } 
     };
     const getFilteredValue = (key: string) => {
         return query[key] ? (query[key] as string).split(",") : undefined;
@@ -63,7 +61,7 @@ export const useTable = <T extends object>() => {
         sortOrder?: "ascend" | "descend"; 
     } => ({
         sorter: true,
-        sortOrder: query.sort === field ? (query.order === "asc" ? "ascend" : "descend") : undefined,
+        sortOrder: query.sort === field ? (query.order ? (query.order === "asc" ? "ascend": "descend") : undefined) : undefined,
     });
 
     return {

@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-
-
-interface Params {
-    [key: string]: string | undefined;
-}
+import { useTypedSelector } from "../store/store";
+import { useDispatch } from "react-redux";
+import { Params } from "../types/api";
+import { setQuery } from "../store/filter.slice";
 
 export const useFilter = () => {
-    const [query, setQuery] = useState<Params>({});
+    const { query } = useTypedSelector((state) => state.filter);
+    const dispatch = useDispatch();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { pathname } = useLocation();
@@ -15,13 +15,23 @@ export const useFilter = () => {
     useEffect(() => {
         const params: Params = {};
         searchParams?.forEach((item, key) => (params[key] = item));
-        setQuery(params);
+        dispatch(setQuery(params));
     }, []);
 
     const resetFilter = () => {
-        setQuery({});
+        dispatch(setQuery({}));
         navigate(pathname.toString());
-    }
+    };
+    const resetFilterExceptPageAndLimit = () => {
+        const newQuery: Params = {};
+        if(query.page) newQuery.page = query.page;
+        if(query.limit) newQuery.limit = query.limit;
+        dispatch(setQuery(newQuery));
+        const newParams = new URLSearchParams();
+        if(query.page) newParams.set("page", String(query.page));
+        if(query.limit) newParams.set("limit", String(query.limit));
+        navigate(`${pathname}?${newParams.toString()}`);
+    };
 
     const updateQueryParams = (params: Params) => {
         const newParams = new URLSearchParams(searchParams?.toString());
@@ -35,8 +45,8 @@ export const useFilter = () => {
                 newParams.delete(key);
             }
         }
-        setQuery(checkedParams);
+        dispatch(setQuery(checkedParams));
         navigate(`${pathname}?${newParams.toString()}`);
     };
-    return { updateQueryParams, query, resetFilter }
+    return { updateQueryParams, query, resetFilter, resetFilterExceptPageAndLimit };
 }
