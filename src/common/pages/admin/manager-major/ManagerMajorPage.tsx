@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTable } from '../../../hooks/useTable';
 import { Major } from '../../../types/Major';
-import { getAllMajors, restoreMajor, softDeleteMajor } from '../../../services/majorService';
+import { getAllMajors, restoreMajor, softDeleteMajor } from '../../../services/majorServices';
 import { Button, Input, message, Space, Tag, Select } from 'antd';
 import FormMajor from './FormMajor';
 import TableDisplay from '../../../../components/common/TableDisplay';

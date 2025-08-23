@@ -2,7 +2,7 @@ import { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 
 import { Major } from "../../../types/Major";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Form, Input, message, Modal } from "antd";
-import { createMajor, updateMajor } from "../../../services/majorService";
+import { createMajor, updateMajor } from "../../../services/majorServices";
 
 export default function FormMajor({
     children,
