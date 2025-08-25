@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Form, message, Select } from 'antd'
-import React, { useState } from 'react'
+import { Button, Form, Input, message, Select, Space } from 'antd'
+import  { useState } from 'react'
 import User from '../../../types/User';
-import { current } from '@reduxjs/toolkit';
 import { createUser, updateUserRole } from '../../../services/userServices';
+import UserTable from './UserTable';
+import UserFormPage from './UserFormPage';
 
 const { Option } = Select;
 
@@ -55,11 +56,78 @@ const ManagerUserPage = () => {
   };
 
   const handleAdd = () => {
-    setEditingUser
+    setEditingUser(null);
+    setModalOpen(true);
+    form.resetFields();
+  };
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    setPagination({...pagination, current: 1});
+  };
+
+  const handleFilterChange = (key: string, value: string | boolean) => {
+    setFilters((prev) => ({...prev, [key]: value}));
+    setPagination({...pagination, current: 1});
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleTableChange = (pagination: any, filters: any, sorter: any) => {
+    setPagination({ current: pagination.current, pageSize: pagination.pageSize});
+    setSortField(sorter.field);
+    setSortOrder(sorter.order ? (sorter.order === "ascend" ? "asc" : "desc") : undefined);
+  };
+
   return (
-    <div>ManagerUserPage</div>
-  )
-}
+    <div>
+      <h2 style={{marginBottom: 16}}>Quản lý người dùng</h2>
+      <Space
+        style={{marginBottom: 16}}
+      >
+        <Input.Search placeholder='Tìm kiếm theo mã, tên, email...' onSearch={handleSearch} style={{width: 300}} />
+        <Select style={{width: 120}} value={filters.status} onChange={(value) => handleFilterChange("status", value)}>
+          <Option value="all">Tất cả trạng thái</Option>
+          <Option value="active">Hoạt động</Option>
+          <Option value="blocked">Đã khoá</Option>
+          <Option value="deleted">Đã xoá</Option>
+        </Select>
+        <Select style={{width: 120}} value={filters.role} onChange={(value) => handleFilterChange("role", value)}>
+          <Option value="all">Tất cả vai trò</Option>
+          <Option value="user">User</Option>
+          <Option value="admin">Admin</Option>
+        </Select>
+        <Select 
+          style={{width: 150}}
+          value={filters.includeDeleted}
+          onChange={(value) => handleFilterChange("includeDeleted", value)}
+          >
+            <Option value={false}>Ẩn đã xoá</Option>
+            <Option value={true}>Hiện đã xoá</Option>
+          </Select>
+          <Button type='primary' onClick={handleAdd}>
+            Thêm người dùng
+          </Button>
+      </Space>
+      <UserTable
+        searchText={searchText}
+        filters={filters}
+        pagination={pagination}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        onTableChange={handleTableChange}
+        onEdit={handleEdit}
+      />
+      <UserFormPage
+        open={modalOpen}
+        editingUser={editingUser}
+        onOk={handleOK}
+        onCancel={() => {
+          setModalOpen(false)
+          setEditingUser(null);
+          form.resetFields();
+        }}
+        form={form}
+      />  
+    </div>
+  );
+};
 
 export default ManagerUserPage
