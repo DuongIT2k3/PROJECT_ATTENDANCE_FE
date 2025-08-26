@@ -12,17 +12,17 @@ const adminMenu = [
 	{
 		key: "/super-admin/users",
 		icon: <TeamOutlined />,
-		label: <Link to="/super-admin/users">Quản lý người dùng</Link>,
+		label: <Link to="/super-admin/users?page=1&limit=5">Quản lý người dùng</Link>,
 	},
 	{
 		key: "/super-admin/majors",
 		icon: <ApartmentOutlined />,
-		label: <Link to="/super-admin/majors">Quản lý chuyên ngành</Link>,
+		label: <Link to="/super-admin/majors?page=1&limit=5">Quản lý chuyên ngành</Link>,
 	},
 	{
 		key: "/super-admin/subjects",
 		icon: <BookOutlined />,
-		label: <Link to="/super-admin/subjects">Quản lý môn học</Link>,
+		label: <Link to="/super-admin/subjects?page=1&limit=5">Quản lý môn học</Link>,
 	},
 	{
 		key: "/super-admin/classes",
