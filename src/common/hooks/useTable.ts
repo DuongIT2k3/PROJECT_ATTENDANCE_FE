@@ -36,7 +36,7 @@ export const useTable = <T extends object>() => {
             limit: pageSize ? pageSize.toString() : "10",
         });
     };
-    const onFilter = (filter: Record<string, FilterValue | null>, sorter: SorterResult<T> | SorterResult<T>[]) => {
+    const onFilter = (filter: Record<string, FilterValue | null>, sorter?: SorterResult<T> | SorterResult<T>[]) => {
         const filterParams = convertObject(filter);
         const sortColumnKey = Array.isArray(sorter) ? sorter[0]?.columnKey : sorter?.columnKey;
         const sortOrder = Array.isArray(sorter) ? sorter[0]?.order : sorter?.order;
@@ -58,9 +58,11 @@ export const useTable = <T extends object>() => {
         field: string
     ): {
         sorter: true;
-        sortOrder?: "ascend" | "descend"; 
+        sortOrder?: "ascend" | "descend";
+        showSorterTooltip: false;
     } => ({
         sorter: true,
+        showSorterTooltip: false,
         sortOrder: query.sort === field ? (query.order ? (query.order === "asc" ? "ascend": "descend") : undefined) : undefined,
     });
 

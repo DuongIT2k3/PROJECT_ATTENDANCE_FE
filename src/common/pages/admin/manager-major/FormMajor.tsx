@@ -41,6 +41,7 @@ export default function FormMajor({
             message.success("Cập nhật chuyên ngành thành công");
             queryClient.invalidateQueries({queryKey: ["majors"] });
             setModalOpen(false);
+            form.resetFields();
         },
         onError: () => message.error("Cập nhật chuyên ngành thất bại"),
     });
@@ -67,7 +68,7 @@ export default function FormMajor({
             }}
             okText={majorEdit ? "Cập nhật" : "Thêm mới"}
             cancelText="Huỷ"
-            destroyOnClose
+            destroyOnHidden
             >
                 <Form form={form} layout="vertical" initialValues={{name: "", description:"", code: ""}}>
                     <Form.Item 

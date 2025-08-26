@@ -1,44 +1,27 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {  useQuery} from '@tanstack/react-query'
 import { useTable } from '../../../hooks/useTable';
 import { Major } from '../../../types/Major';
-import { getAllMajors, restoreMajor, softDeleteMajor } from '../../../services/majorServices';
-import { Button, Input, message, Space, Tag, Select } from 'antd';
+import { getAllMajors } from '../../../services/majorServices';
+import { Button, Space, Tag, Select } from 'antd';
 import FormMajor from './FormMajor';
 import TableDisplay from '../../../../components/common/TableDisplay';
 import { majorColumns } from './MajorColumns';
 import { DefaultOptionType } from 'antd/es/select';
+import SearchInput from '../../../../components/common/SearchInput';
+import { UndoOutlined } from '@ant-design/icons';
 
 const ManagerMajorPage = () => {
-  const queryClient = useQueryClient();
   const { query, getSorterProps, onFilter, onSelectPaginateChange, onChangeSearchInput, onSubmitSearch, resetFilter  } = useTable<Major>();
   
   const { data, isLoading } = useQuery({
     queryKey: ["majors", ...Object.values(query)],
-    queryFn: () => getAllMajors({ includeDeleted: true, limit: "5", ...query }),
+    queryFn: () => getAllMajors({  limit: "5", ...query }),
     retry: 0,
   });
-
-  const deleteMutation = useMutation({
-    mutationFn: softDeleteMajor,
-    onSuccess: () => {
-      message.success("Xoá chuyên ngành thành công");
-      queryClient.invalidateQueries({queryKey: ["majors"] });
-
-    },
-    onError: () => message.error("Xoá chuyên ngành thất bại"),
-  });
-  const restoreMutation = useMutation({
-    mutationFn: restoreMajor,
-    onSuccess: () => {
-      message.success("Khôi phục chuyên ngành thành công");
-      queryClient.invalidateQueries({queryKey: ["majors"]});
-    },
-    onError: () => message.error("Khôi phục chuyên ngành thất bại."),
-  });
   const options: DefaultOptionType[] = [
-    { value: "", label: <Tag color='blue'>Tất cả</Tag> },
-    { value: "false", label: <Tag color='green'>Đang hoạt động</Tag> },
-    { value: "true", label: <Tag color='red'>Đã xoá</Tag> },
+    {value: "", label: <Tag color='blue'>Tất cả</Tag>},
+    {value: "false", label: <Tag color='green'>Đang hoạt động</Tag>},
+    {value: "true", label: <Tag color='red'>Đã xoá</Tag>},
   ];
 
   return (
@@ -51,39 +34,50 @@ const ManagerMajorPage = () => {
        }}
        >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Input.Search 
-         placeholder='Tìm kiếm theo mã, tên chuyên ngành, mô tả....'
-         onSearch={(e) => onSubmitSearch(e)}
-         onChange={(e) => onChangeSearchInput(e.target.value, { enableOnChangeSearch: true })}
-         defaultValue={query?.search}
-         style={{ width: 300 }}
-         />
-         <Select
-           allowClear
-           value={query?.isDeleted}
-           onChange={(value) => onFilter({ isDeleted: value })} 
-           placeholder="Trạng thái hoạt động"
-           options={options}
-           style={{ width: 150 }}
-          /> 
-        </div>
-        <div style={{display: "flex", alignItems: "center", gap: 12}}>
-           {Object.keys(query).some((key) => 
-            !["page", "limit"].includes(key) &&
-            query[key] !== undefined && 
-            query[key] !== ""
+            <SearchInput
+            placeholder="Tìm kiếm theo mã, tên, mô tả..."
+            onSearch={(e) => onSubmitSearch(e)}
+            onChangeSearchInput={(value) =>
+              onChangeSearchInput(value, { enableOnChangeSearch: true })
+            }
+            defaultValue={query?.search}
+            style={{ width: 300 }}
+          />
+          <Select
+            allowClear
+            value={query?.isDeleted}
+            onChange={(value) => onFilter({ isDeleted: value })}
+            placeholder="Trạng thái hoạt động"
+            options={options}
+            style={{
+              width: 150,
+            }}
+          />
+          {Object.keys(query).some(
+            (key) =>
+              !["page", "limit"].includes(key) &&
+              query[key] !== undefined &&
+              query[key] !== ""
           ) && (
             <Button onClick={() => resetFilter({ keepPageAndLimit: true })}>
-               Đặt lại bộ lọc
+              <UndoOutlined />
             </Button>
           )}
-          <FormMajor>
-            <Button type='primary'>Thêm chuyên ngành</Button>
-         </FormMajor>
         </div>
-       </Space>
-       <TableDisplay<Major>
-        columns={majorColumns(getSorterProps, deleteMutation, restoreMutation)}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <FormMajor>
+            <Button type="primary">Thêm chuyên ngành</Button>
+          </FormMajor>
+        </div>
+      </Space>
+      <TableDisplay<Major>
+        columns={majorColumns(getSorterProps)}
         dataSource={data?.data}
         onFilter={onFilter}
         currentPage={data?.meta.page || 1}
@@ -91,7 +85,7 @@ const ManagerMajorPage = () => {
         isLoading={isLoading}
         pageSize={data?.meta.limit}
         onSelectPaginateChange={onSelectPaginateChange}
-       />
+      />
     </div>
   );
 };
