@@ -1,17 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Subject } from '../../../types/Subject';
-import { Button, message, Space,  Tag, Select } from 'antd';
-import { getAllSubjects, restoreSubject, softDeleteSubject } from '../../../services/subjectService';
+import { Button, Space,  Tag, Select } from 'antd';
+import { getAllSubjects } from '../../../services/subjectService';
 import { useTable } from '../../../hooks/useTable';
 import SearchInput from '../../../../components/common/SearchInput';
 import FormSubject from './FormSubject';
 import TableDisplay from '../../../../components/common/TableDisplay';
 import { subjectColumns } from './SubjectColumn';
 import { DefaultOptionType } from 'antd/es/select';
+import { UndoOutlined } from '@ant-design/icons';
 
 
 const ManagerSubjectPage = () => {
-  const queryClient = useQueryClient();
+
   
   const {query, onFilter, onChangeSearchInput, onSubmitSearch, getSorterProps, onSelectPaginateChange, resetFilter} = useTable<Subject>();
 
@@ -19,24 +20,6 @@ const ManagerSubjectPage = () => {
     queryKey: ["subjects", ...Object.values(query)],
     queryFn: () => getAllSubjects({ limit: "5", ...query}),
   });
-
-  const deleteMutation = useMutation({
-    mutationFn: softDeleteSubject,
-    onSuccess: () => {
-      message.success("Xoá môn học thành công");
-      queryClient.invalidateQueries({ queryKey: ["subjects"] });
-    },
-    onError: () => message.error("Xoá môn học thất bại"),
-    });
-
-    const restoreMutation = useMutation({
-      mutationFn: restoreSubject,
-      onSuccess: () => {
-        message.success("Khôi phục môn học thành công");
-        queryClient.invalidateQueries({queryKey: ["subjects"]});
-      },
-      onError: () => message.error("Khôi phục môn học thất bại"),
-    });
     
     const subjects = data?.data;
     const pagination = data?.meta;
@@ -78,7 +61,7 @@ const ManagerSubjectPage = () => {
               query[key] !== ""
             ) && (
               <Button onClick={() => resetFilter({keepPageAndLimit: true})}>
-                Đặt lại bộ lọc
+                <UndoOutlined />
               </Button>
             )
             }
@@ -89,11 +72,7 @@ const ManagerSubjectPage = () => {
       </Space>
 
       <TableDisplay<Subject>
-        columns={subjectColumns(
-          getSorterProps,
-          deleteMutation,
-          restoreMutation
-        )}
+        columns={subjectColumns(getSorterProps)}
         dataSource={subjects}
         isLoading={isLoading}
         currentPage={pagination?.page || 1}
