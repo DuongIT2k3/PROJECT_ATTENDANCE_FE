@@ -1,0 +1,135 @@
+import { Form, Input, message, Modal, Select } from 'antd'
+import React, { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 'react'
+import User from '../../../types/User';
+import { Major }  from '../../../types/Major';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createUser, updateUserRole } from '../../../services/userServices';
+import { getAllMajors } from '../../../services/majorServices';
+import { InfiniteSelect } from '../../../../components/common/InfiniteSelect';
+
+const { Option } = Select;
+
+interface UserFormProps {
+  children: ReactNode;
+  userEdit?: User;
+}
+
+const UserForm = ({ children, userEdit} : UserFormProps) => {
+  const [open, setOpen] = useState(false);
+  const [form] = Form.useForm();
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      message.success(
+        "Thêm người dùng thành công"
+      );
+      queryClient.invalidateQueries({queryKey: ["users"]});
+      setOpen(false);
+    },
+    onError: () => message.error("Thêm người dùng thất bại"),
+  });
+  const updateRoleMutation = useMutation({
+    mutationFn: ({id, payload} : {id: string; payload: Partial<User> }) => updateUserRole(id, payload),
+    onSuccess: () => {
+      message.success("Cập nhật vai trò thành công");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setOpen(false);
+    },
+    onError: () => {
+      message.error("Cập nhật vai trò thất bại");
+    }
+  });
+  const handleOk = () => {
+    form.validateFields().then((values) => {
+      if(userEdit) {
+        updateRoleMutation.mutate({ id: userEdit._id, payload: values })
+      } else {
+        createMutation.mutate(values);
+      }
+    });
+  }
+  const handleEdit = (user: User) => {
+    setOpen(true);
+    form.setFieldsValue({ role: user.role });
+  };
+  const handleAdd = () => {
+    setOpen(true);
+    form.resetFields();
+  }
+  const selectedRole = Form.useWatch("role", form);
+  return (
+     <>
+      {isValidElement(children) ? cloneElement(children as ReactElement, {
+        onclick: () => (userEdit ? handleEdit(userEdit) : handleAdd()),
+      })
+      :children} 
+      <Modal 
+       title={userEdit ? "Cập nhật vai trò" : "Thêm người dùng"}
+       open={open}
+       onOk={handleOk}
+       onCancel={() => setOpen(false)}
+       okText={userEdit ? "Cập nhật" : "Thêm mới"}
+       cancelText="Huỷ"
+       destroyOnHidden
+      >
+        <Form form={form} layout='vertical'>
+            <>
+              <Form.Item label="Vai trò" name="role" rules={[{ required: true, message: "Vui lòng chọn vai trò  " }]}>
+                 <Select placeholder="Chọn vai trò của người dùng">
+                  <Option value="teacher">Giảng viên</Option>
+                  <Option value="student">Sinh viên</Option>
+                  <Option value="superAdmin">Quản trị viên</Option>
+                 </Select>
+              </Form.Item>
+              {selectedRole === "student" && !userEdit && (
+                <Form.Item
+                  label="Chuyên ngành"
+                  name="majorId"
+                  rules={[{required: true, message: "Vui lòng chọn chuyên ngành"},]}
+                >
+                  <InfiniteSelect<Major>
+                      labelDataIndex="name"
+                      valueDataIndex="_id"
+                      placeholder="Chọn chuyên ngành"
+                      placement="bottomLeft"
+                      queryKey={["majors"]}
+                      fetchFn={(params) => getAllMajors({isDeleted: false, ...params})}
+                    />  
+                </Form.Item>
+              ) }
+              {!userEdit && (
+                <>
+                  <Form.Item
+                    label="Họ tên"
+                    name="fullname"
+                    rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}
+                  >
+                    <Input placeholder='VD:Nguyen Van A' />
+                  </Form.Item>
+                  <Form.Item
+                    label="Email"
+                    name="email"
+                    rules={[{ required: true, message: "Vui lòng nhập email", type:"email" }]}
+                  >
+                    <Input placeholder='VD:anv@example.com' />
+                  </Form.Item>
+                  <Form.Item
+                    label="Số điện thoại"
+                    name="phone"
+                    rules={[{ required: true, message: "Vui lòng nhập số điện thoại" }, {pattern: /^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$/,
+                    message: "Số điện thoại không hợp lệ",}]}
+                  >
+                    <Input placeholder='VD:012345678' />
+                  </Form.Item>
+                </>
+              )}
+            </>
+        </Form>
+      </Modal>
+     </>
+  );
+};
+
+export default UserForm;
