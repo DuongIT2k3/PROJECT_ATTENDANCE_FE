@@ -1,9 +1,9 @@
 import { Tooltip } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 
 
 
-export const TextCell = ({ text, clamp = 1 }: { text: string, clamp?: number  }) => {
+export const TextCell = ({ text, clamp = 1, style }: { text: string, clamp?: number, style?: CSSProperties  }) => {
     const textRef = useRef<HTMLParagraphElement>(null);
     const [isTruncated, setIsTruncated] = useState(false);
 
@@ -15,7 +15,7 @@ export const TextCell = ({ text, clamp = 1 }: { text: string, clamp?: number  })
     }, [text]);
 
     const textElement = (
-        <p ref={textRef} style={{margin: 0}} className={`line-clamp line-clamp-${clamp}`}>
+        <p ref={textRef} style={{margin: 0, ...style}} className={`line-clamp line-clamp-${clamp}`}>
             {text}
         </p>
     );

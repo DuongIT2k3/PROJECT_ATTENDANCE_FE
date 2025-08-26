@@ -31,7 +31,8 @@ const TableDisplay = <T extends object>({
     };
     return (
         <>
-            <Table<T>
+           <div style={{minHeight: 300}}>
+             <Table<T>
                 rowKey="_id"
                 bordered={true}
                 loading={isLoading}
@@ -43,9 +44,10 @@ const TableDisplay = <T extends object>({
                     x: "horizontal",
                 }}
             />
+           </div>
             <Space style={{
                 display: "flex",
-                width: "100",
+                width: "100%",
                 justifyContent: "flex-end",
                 marginTop: "25px",
             }}
@@ -54,6 +56,7 @@ const TableDisplay = <T extends object>({
                   onChange={onSelectPaginateChange}
                   pageSize={pageSize}
                   total={totalDocs}
+                  pageSizeOptions={['5','10','15','20','25','30']}
                   current={currentPage}
                   showSizeChanger
                 />
