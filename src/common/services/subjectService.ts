@@ -23,7 +23,7 @@ export const updateSubject = async (
 };
 
 export const softDeleteSubject = async (id: string): Promise<Subject> => {
-	const res = await apiClient.patch(`/subjects/soft-delete/${id}`);
+	const res = await apiClient.patch(`/subjects/soft/${id}`);
 	return res.data.data;
 };
 

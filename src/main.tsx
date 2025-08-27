@@ -8,6 +8,7 @@ import {
 import { Provider } from "react-redux"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import store from "./common/store/store.ts"
+import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

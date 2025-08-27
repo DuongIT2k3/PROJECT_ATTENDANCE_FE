@@ -1,0 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "antd/dist/reset.css";
+
+:root {
+	--gradient: linear-gradient(135deg, #112f85, #9359f7);
+	--primary: #112f85;
+	--secondary: #1c398e;
+	--light1: #3459c7;
+	--light2: #2759e9;
+}
+
+.mobile-menu {
+	transform: translateY(-100%);
+	transition: transform 0.3s ease-in-out;
+	-webkit-transition: transform 0.3s ease-in-out;
+	-moz-transition: transform 0.3s ease-in-out;
+	-ms-transition: transform 0.3s ease-in-out;
+	-o-transition: transform 0.3s ease-in-out;
+}
+.mobile-menu.open {
+	transform: translateY(0);
+}
+/* Line Clamp */
+.line-clamp {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.line-clamp-1 {
+  	-webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  	-webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  	-webkit-line-clamp: 3;
+}

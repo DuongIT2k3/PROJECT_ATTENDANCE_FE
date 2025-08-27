@@ -25,7 +25,7 @@ export const updateMajor = async (
 };
 
 export const softDeleteMajor = async (id: string): Promise<Major> => {
-  const res = await apiClient.patch(`/majors/soft-delete/${id}`);
+  const res = await apiClient.patch(`/majors/soft/${id}`);
   return res.data.data;
 };
 

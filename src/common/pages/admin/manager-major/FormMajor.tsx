@@ -58,7 +58,8 @@ export default function FormMajor({
     return (
         <>
             {isValidElement(children)
-             ? cloneElement(children as ReactElement, {
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             ? cloneElement(children as ReactElement<any>, {
                 onClick: () => (majorEdit ? handleEdit(majorEdit) : handleAdd()),
              })
             : children}

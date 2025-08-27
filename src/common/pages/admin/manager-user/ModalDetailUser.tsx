@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import User from "../../../types/User";
 import { formatDateToLocaleVN } from "../../../utils/formatDate";
 import { translateRoles } from "../../../utils/translateRoles";
@@ -8,7 +9,6 @@ import {
   cloneElement,
   isValidElement,
   ReactElement,
-  ReactNode,
   useState,
 } from "react";
 
@@ -16,7 +16,7 @@ const ModalDetailUser = ({
   children,
   userInfo,
 }: {
-  children: ReactNode;
+  children: ReactElement<any, any>;
   userInfo: User;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,9 +135,17 @@ const ModalDetailUser = ({
   ];
   return (
     <>
-      {isValidElement(children)
-        ? cloneElement(children as ReactElement, {
-            onClick: () => setIsOpen(true),
+      {isValidElement(children) && typeof (children as any).type !== "string"
+        ? cloneElement(children as ReactElement<any>, {
+            onClick: (e: React.MouseEvent) => {
+              if (
+                children.props &&
+                typeof (children.props as { onClick?: (e: React.MouseEvent) => void }).onClick === "function"
+              ) {
+                (children.props as { onClick?: (e: React.MouseEvent) => void }).onClick?.(e);
+              }
+              setIsOpen(true);
+            },
           })
         : children}
       <Modal

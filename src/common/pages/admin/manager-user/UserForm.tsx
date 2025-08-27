@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Form, Input, message, Modal, Select } from 'antd'
 import React, { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 'react'
 import User from '../../../types/User';
@@ -61,10 +62,11 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
   const selectedRole = Form.useWatch("role", form);
   return (
      <>
-      {isValidElement(children) ? cloneElement(children as ReactElement, {
-        onclick: () => (userEdit ? handleEdit(userEdit) : handleAdd()),
-      })
-      :children} 
+      {isValidElement(children)
+        ? cloneElement(children as ReactElement<any>, {
+            onClick: () => (userEdit ? handleEdit(userEdit) : handleAdd()),
+          })
+        : children}
       <Modal 
        title={userEdit ? "Cập nhật vai trò" : "Thêm người dùng"}
        open={open}

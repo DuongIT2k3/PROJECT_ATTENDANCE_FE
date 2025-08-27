@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { cloneElement, isValidElement, ReactElement, useState } from "react"
 import { Subject } from "../../../types/Subject"
 import { Form, Input, message, Modal } from "antd";
@@ -49,11 +50,11 @@ const FormSubject = ({children, subjectEdit} : {children: React.ReactNode, subje
     };
     return (
         <>
-            {isValidElement(children)
-                ? cloneElement(children as ReactElement, {
-                    onClick: () => (subjectEdit ? handleEdit(subjectEdit): handleAdd()),
+            {isValidElement(children) && typeof (children as any).type !== "string"
+                ? cloneElement(children as ReactElement<any>, {
+                    onClick: () => (subjectEdit ? handleEdit(subjectEdit) : handleAdd()),
                 })
-            : children}
+                : children}
             <Modal 
              title={subjectEdit ? "Cập nhật môn học" : "Thêm môn học"}
              open={modalOpen}
