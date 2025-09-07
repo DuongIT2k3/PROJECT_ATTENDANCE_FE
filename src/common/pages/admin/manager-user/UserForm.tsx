@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Form, Input, message, Modal, Select } from 'antd'
-import React, { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 'react'
+import { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 'react'
 import User from '../../../types/User';
 import { Major }  from '../../../types/Major';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +29,9 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
       queryClient.invalidateQueries({queryKey: ["users"]});
       setOpen(false);
     },
-    onError: () => message.error("Thêm người dùng thất bại"),
+    onError: (err) => {
+      message.error(err.message);
+    }
   });
   const updateRoleMutation = useMutation({
     mutationFn: ({id, payload} : {id: string; payload: Partial<User> }) => updateUserRole(id, payload),
@@ -81,7 +83,7 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
               <Form.Item label="Vai trò" name="role" rules={[{ required: true, message: "Vui lòng chọn vai trò  " }]}>
                  <Select placeholder="Chọn vai trò của người dùng">
                   <Option value="teacher">Giảng viên</Option>
-                  <Option value="student">Sinh viên</Option>
+                  <Option value="student">Học sinh</Option>
                   <Option value="superAdmin">Quản trị viên</Option>
                  </Select>
               </Form.Item>
@@ -120,8 +122,7 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
                   <Form.Item
                     label="Số điện thoại"
                     name="phone"
-                    rules={[{ required: true, message: "Vui lòng nhập số điện thoại" }, {pattern: /^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$/,
-                    message: "Số điện thoại không hợp lệ",}]}
+                    rules={[{ required: true, message: "Vui lòng nhập số điện thoại" }]}
                   >
                     <Input placeholder='VD:012345678' />
                   </Form.Item>

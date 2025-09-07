@@ -160,7 +160,7 @@ const Header = () => {
 						</Link>
 					</Button>
 					<Button type="primary" style={{ background: "var(--gradient)", border: "none" }}>
-						<Link to="/register" style={{ color: "#ff1818ff" }}>
+						<Link to="/register" style={{ color: "#fff" }}>
 							Đăng ký ngay
 						</Link>
 					</Button>

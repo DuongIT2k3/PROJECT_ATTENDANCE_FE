@@ -13,7 +13,7 @@ const authRoutes: RouteObject[] = [
 			{ path: "/login", element: <LoginPage /> },
 			{ path: "/register", element: <RegisterPage /> },
 			{ path: "/forgot-password", element: <ForgotPasswordPage /> },
-			{ path: "/reset-password", element: <ResetPasswordPage /> },
+			{ path: "/reset-password/:resetToken", element: <ResetPasswordPage /> },
 		],
 	},
 ];
