@@ -42,6 +42,31 @@ export enum ShiftEnum {
 
 export enum RoomEnum {
 	ONLINE = "Online",
+	// Tầng 1 - Phòng lý thuyết
 	A101 = "A101",
+	A102 = "A102",
+	A103 = "A103",
+	A104 = "A104",
+	A105 = "A105",
+	// Tầng 2 - Phòng lý thuyết
+	A201 = "A201",
+	A202 = "A202",
+	A203 = "A203",
+	A204 = "A204",
+	A205 = "A205",
+	// Phòng máy tính
+	F201 = "F201",
+	F202 = "F202",
+	F203 = "F203",
 	F204 = "F204",
+	F301 = "F301",
+	F302 = "F302",
+	// Phòng thực hành
+	B101 = "B101",
+	B102 = "B102",
+	B201 = "B201",
+	B202 = "B202",
+	// Phòng đặc biệt
+	HALL = "Hội trường",
+	LIBRARY = "Thư viện",
 }
