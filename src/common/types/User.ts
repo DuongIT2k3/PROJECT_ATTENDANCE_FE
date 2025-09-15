@@ -20,4 +20,5 @@ export default interface User {
     majorId?: Major | string | null;
     createdAt?: string;
     updatedAt?: string;
+    plainPassword?: string;
 }

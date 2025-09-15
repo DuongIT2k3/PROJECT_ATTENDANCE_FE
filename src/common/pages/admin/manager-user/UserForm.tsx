@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Form, Input, message, Modal, Select } from 'antd'
+import { Form, Input, message, Modal, Select, Button } from 'antd'
 import { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 'react'
 import User from '../../../types/User';
 import { Major }  from '../../../types/Major';
@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createUser, updateUserRole } from '../../../services/userServices';
 import { getAllMajors } from '../../../services/majorServices';
 import { InfiniteSelect } from '../../../../components/common/InfiniteSelect';
+import { CopyOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 
@@ -22,15 +23,66 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
 
   const createMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: () => {
-      message.success(
-        "Thêm người dùng thành công"
-      );
+    onSuccess: (data) => {
+      // Hiển thị mật khẩu cho admin
+      if (data.plainPassword) {
+        const copyPassword = () => {
+          navigator.clipboard.writeText(data.plainPassword!);
+          message.success('Đã copy mật khẩu!');
+        };
+
+        Modal.success({
+          title: "Tạo người dùng thành công!",
+          content: (
+            <div>
+              <p><strong>Tên người dùng:</strong> {data.username}</p>
+              <p><strong>Email:</strong> {data.email}</p>
+              <div style={{ 
+                backgroundColor: '#fff2f0', 
+                border: '1px solid #ffccc7',
+                borderRadius: '4px',
+                padding: '12px',
+                margin: '8px 0'
+              }}>
+                <p style={{ margin: 0, color: '#ff4d4f' }}>
+                  <strong>Mật khẩu tạm thời:</strong> 
+                  <code style={{ 
+                    backgroundColor: '#f5f5f5', 
+                    padding: '2px 6px',
+                    margin: '0 8px',
+                    borderRadius: '3px',
+                    fontSize: '14px'
+                  }}>
+                    {data.plainPassword}
+                  </code>
+                  <Button 
+                    type="link" 
+                    size="small" 
+                    icon={<CopyOutlined />}
+                    onClick={copyPassword}
+                    style={{ padding: 0 }}
+                  >
+                    Copy
+                  </Button>
+                </p>
+              </div>
+              <p style={{ fontSize: '12px', color: '#666', marginBottom: 0 }}>
+                <strong>⚠️ Lưu ý:</strong> Vui lòng lưu mật khẩu này và thông báo cho người dùng. 
+                Người dùng nên đổi mật khẩu sau lần đăng nhập đầu tiên.
+              </p>
+            </div>
+          ),
+          width: 600,
+        });
+      } else {
+        message.success("Thêm người dùng thành công");
+      }
       queryClient.invalidateQueries({queryKey: ["users"]});
       setOpen(false);
+      form.resetFields();
     },
-    onError: (err) => {
-      message.error(err.message);
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || "Thêm người dùng thất bại");
     }
   });
   const updateRoleMutation = useMutation({

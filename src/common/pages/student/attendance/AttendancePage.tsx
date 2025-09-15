@@ -1,8 +1,8 @@
 import React from 'react'
 
-type Props = {}
 
-const AttendancePage = (props: Props) => {
+
+const AttendancePage = () => {
   return (
     <div>AttendancePage</div>
   )

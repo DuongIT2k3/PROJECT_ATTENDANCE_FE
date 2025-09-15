@@ -1,6 +1,6 @@
 import type { RouteObject } from "react-router-dom";
 import AttendancePage from "../pages/student/attendance/AttendancePage";
-import ClassListPage from "../pages/student/class/ClassListPage";
+import ClassOfStudentPage from "../pages/student/class/ClassOfStudentPage";
 import ProtectedRoutes from "./ProtectedRoutes";
 import { RoleEnum } from "../types";
 import StudentLayout from "../../components/layouts/StudentLayout";
@@ -16,7 +16,7 @@ const studentRoutes: RouteObject[] = [
         ),
         children: [
             {path: "attendances", element: <AttendancePage />},
-            {path: "classes", element: <ClassListPage />}
+            {path: "classes", element: <ClassOfStudentPage />}
         ]
     }
 ];
