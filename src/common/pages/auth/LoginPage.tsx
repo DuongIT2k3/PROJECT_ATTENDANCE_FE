@@ -29,7 +29,7 @@ const LoginPage = () => {
              nav("/super-admin/users");
              break;
           case RoleEnum.TEACHER:
-            nav("/teacher/attendances");
+            nav("/teacher/attendance");
             break;
           case RoleEnum.STUDENT:
             nav("/student/attendances");

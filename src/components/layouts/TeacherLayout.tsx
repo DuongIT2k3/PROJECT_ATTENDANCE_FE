@@ -1,4 +1,4 @@
-import { Layout, theme } from "antd";
+import { Layout } from "antd";
 import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import ContentWrapper from "../common/ContentWrapper";
@@ -10,21 +10,27 @@ import BreadcrumbNav from "../common/BreadcrumNav";
 
 const teacherMenu = [
 	{
-		key: "/teacher/sessions",
+		key: "/teacher/classes",
 		icon: <TeamOutlined />,
-		label: <Link to="/teacher/sessions">Quản lý lớp học</Link>,
+		label: <Link to="/teacher/classes">Quản lý lớp học</Link>,
 	},
 	{
 		key: "/teacher/attendance",
 		icon: <CalendarOutlined />,
-		label: <Link to="/teacher/attendances">Điểm danh</Link>,
+		label: <Link to="/teacher/attendance">Điểm danh</Link>,
+	},
+	{
+		key: "/teacher/sessions",
+		icon: <CalendarOutlined />,
+		label: <Link to="/teacher/sessions">Lịch sử điểm danh</Link>,
 	},
 ];
 
 const getBreadcrumb = (pathname: string) => {
 	const map: Record<string, string> = {
-		"/teacher/sessions": "Quản lý lớp học",
-		"/teacher/attendances": "Điểm danh",
+		"/teacher/classes": "Quản lý lớp học",
+		"/teacher/attendance": "Điểm danh",
+		"/teacher/sessions": "Lịch sử điểm danh",
 	};
 	const paths = pathname.split("/").filter(Boolean);
 	const crumbs = [
@@ -43,9 +49,6 @@ const getBreadcrumb = (pathname: string) => {
 
 const TeacherLayout = () => {
 	const location = useLocation();
-	const {
-		token: { colorBgContainer },
-	} = theme.useToken();
 
 	const selectedKeys = useMemo(() => {
 		const match = teacherMenu.find((item) => location.pathname.startsWith(item.key));
@@ -59,13 +62,68 @@ const TeacherLayout = () => {
 	}, []);
 
 	return (
-		<Layout style={{ minHeight: "100vh" }}>
-			<SiderMenu menuItems={teacherMenu} selectedKeys={selectedKeys} logoText="CodeFarm Teacher" />
-			<Layout>
-				<HeaderBar title="Quản lý lớp học CodeFarm" />
-				<div style={{ padding: "16px 24px 0 24px", background: colorBgContainer }}>
-					<BreadcrumbNav items={breadcrumbs} />
-					<ContentWrapper bgColor={colorBgContainer} />
+		<Layout 
+			style={{ 
+				minHeight: "100vh",
+				height: "100vh",
+				background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+				margin: 0,
+				padding: 0,
+				position: "fixed",
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				overflow: "hidden"
+			}}
+		>
+			<SiderMenu 
+				menuItems={teacherMenu} 
+				selectedKeys={selectedKeys} 
+				logoText="CodeFarm Teacher" 
+			/>
+			<Layout style={{ background: "transparent", overflow: "hidden" }}>
+				<HeaderBar />
+				<div 
+					style={{ 
+						padding: "20px", 
+						background: "transparent",
+						flex: 1,
+						display: "flex",
+						flexDirection: "column",
+						gap: "16px",
+						overflow: "auto",
+						height: "calc(100vh - 64px)"
+					}}
+				>
+					<div
+						style={{
+							background: "rgba(255, 255, 255, 0.15)",
+							backdropFilter: "blur(15px)",
+							borderRadius: "16px",
+							padding: "16px 24px",
+							border: "2px solid rgba(255, 255, 255, 0.4)",
+							boxShadow: "0 12px 40px rgba(0, 0, 0, 0.12)",
+						}}
+					>
+						<BreadcrumbNav items={breadcrumbs} />
+					</div>
+					<div
+						style={{
+							background: "rgba(255, 255, 255, 0.98)",
+							backdropFilter: "blur(25px)",
+							borderRadius: "20px",
+							padding: "32px",
+							border: "3px solid rgba(255, 255, 255, 0.6)",
+							boxShadow: "0 25px 80px rgba(0, 0, 0, 0.15)",
+							flex: 1,
+							transition: "all 0.3s ease",
+							overflow: "auto",
+							position: "relative"
+						}}
+					>
+						<ContentWrapper bgColor="transparent" />
+					</div>
 				</div>
 			</Layout>
 		</Layout>
