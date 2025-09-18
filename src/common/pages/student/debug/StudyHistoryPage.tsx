@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
-  Card, 
   Table, 
+  Card, 
   Typography, 
   Tag, 
   Space, 
@@ -13,23 +13,21 @@ import {
   Statistic, 
   Progress,
   Empty,
-  Spin,
-  Alert,
-  Badge
+  Spin
 } from 'antd';
 import { 
-  CheckCircleOutlined, 
-  CloseCircleOutlined, 
-  ClockCircleOutlined,
-  CalendarOutlined,
-  BookOutlined,
+  HistoryOutlined, 
+  CalendarOutlined, 
+  BookOutlined, 
   UserOutlined,
-  TrophyOutlined,
-  InfoCircleOutlined
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined,
+  FilterOutlined
 } from '@ant-design/icons';
-import { IAttendanceHistory, IAttendanceHistoryFilter } from '../../../types/Attendance';
+import { ISession } from '../../../types/Session';
 import { IClass } from '../../../types/Classes';
-import { getAttendanceHistory } from '../../../services/attendanceServices';
+import { getAllSessionsByClassId } from '../../../services/sessionServices';
 import { getAllClasses } from '../../../services/classServices';
 import { StatusEnum } from '../../../types';
 import dayjs, { Dayjs } from 'dayjs';
@@ -41,9 +39,21 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
-const AttendancePage = () => {
-  const [attendanceData, setAttendanceData] = useState<IAttendanceHistory[]>([]);
-  const [filteredData, setFilteredData] = useState<IAttendanceHistory[]>([]);
+interface StudyHistoryRecord {
+  key: string;
+  sessionId: string;
+  sessionDate: string;
+  className: string;
+  subjectName: string;
+  teacherName: string;
+  status: StatusEnum;
+  note?: string;
+  classInfo: IClass;
+}
+
+const StudyHistoryPage = () => {
+  const [studyHistory, setStudyHistory] = useState<StudyHistoryRecord[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<StudyHistoryRecord[]>([]);
   const [classes, setClasses] = useState<IClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -56,133 +66,65 @@ const AttendancePage = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [attendanceData, selectedClass, selectedStatus, dateRange]);
+  }, [studyHistory, selectedClass, selectedStatus, dateRange]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch classes
+      // Fetch classes first
       const classResponse = await getAllClasses();
-      setClasses(classResponse.data || []);
+      const classData = classResponse.data || [];
+      setClasses(classData);
 
-      // Fetch attendance history
-      const filters: IAttendanceHistoryFilter = {
-        // studentId: currentUser.id, // Should get from auth context
-        limit: 100
-      };
+      // Fetch sessions for each class and simulate attendance data
+      let allHistory: StudyHistoryRecord[] = [];
       
-      try {
-        const attendanceResponse = await getAttendanceHistory(filters);
-        if (attendanceResponse.data && attendanceResponse.data.length > 0) {
-          setAttendanceData(attendanceResponse.data);
-        } else {
-          // If no real data, generate mock data
-          const mockData: IAttendanceHistory[] = generateMockAttendanceData();
-          setAttendanceData(mockData);
+      for (const classItem of classData) {
+        try {
+          const sessionsResponse = await getAllSessionsByClassId(classItem._id);
+          const sessions = sessionsResponse.data || [];
+          
+          // Simulate attendance records for past sessions
+          const pastSessions = sessions.filter(session => 
+            dayjs(session.sessionDate).isBefore(dayjs(), 'day')
+          );
+
+          const historyRecords = pastSessions.map((session: ISession) => ({
+            key: `${session._id}_student`,
+            sessionId: session._id,
+            sessionDate: session.sessionDate,
+            className: classItem.name || 'Chưa có tên lớp',
+            subjectName: classItem.subjectId?.name || 'Chưa có môn học',
+            teacherName: classItem.teacherId?.fullname || 'Chưa có giảng viên',
+            status: Math.random() > 0.8 ? StatusEnum.ABSENT : 
+                    Math.random() > 0.9 ? StatusEnum.LATE : StatusEnum.PRESENT,
+            note: session.note,
+            classInfo: classItem
+          }));
+          
+          allHistory = [...allHistory, ...historyRecords];
+        } catch (error) {
+          console.warn(`Failed to fetch sessions for class ${classItem._id}:`, error);
         }
-      } catch (error) {
-        console.error('Error fetching attendance data:', error);
-        // Generate mock data for demo
-        const mockData: IAttendanceHistory[] = generateMockAttendanceData();
-        setAttendanceData(mockData);
       }
+
+      // Sort by date descending
+      allHistory.sort((a, b) => dayjs(b.sessionDate).valueOf() - dayjs(a.sessionDate).valueOf());
+      
+      setStudyHistory(allHistory);
     } catch (error) {
-      console.error('Error in fetchData:', error);
+      console.error('Error fetching study history:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Generate mock data for demonstration
-  const generateMockAttendanceData = (): IAttendanceHistory[] => {
-    const mockData: IAttendanceHistory[] = [];
-    const startDate = dayjs().subtract(3, 'month');
-    
-    const mockClasses = [
-      {
-        _id: 'class_1',
-        name: 'CNTT01 - Công nghệ thông tin',
-        subjectId: {
-          _id: 'subject_1',
-          name: 'Lập trình Web nâng cao',
-          code: 'LTW301'
-        },
-        teacherId: {
-          _id: 'teacher_1',
-          fullname: 'TS. Nguyễn Văn Minh'
-        }
-      },
-      {
-        _id: 'class_2',
-        name: 'KTPM02 - Kỹ thuật phần mềm',
-        subjectId: {
-          _id: 'subject_2',
-          name: 'Cơ sở dữ liệu phân tán',
-          code: 'CSDL302'
-        },
-        teacherId: {
-          _id: 'teacher_2',
-          fullname: 'ThS. Trần Thị Hương'
-        }
-      },
-      {
-        _id: 'class_3',
-        name: 'KHMT03 - Khoa học máy tính',
-        subjectId: {
-          _id: 'subject_3',
-          name: 'Mạng máy tính nâng cao',
-          code: 'MMT401'
-        },
-        teacherId: {
-          _id: 'teacher_3',
-          fullname: 'PGS.TS. Lê Văn Tuấn'
-        }
-      }
-    ];
-    
-    for (let i = 0; i < 60; i++) {
-      const sessionDate = startDate.add(i * 1, 'day');
-      if (sessionDate.isAfter(dayjs())) break;
-      
-      // Skip weekends
-      if (sessionDate.day() === 0 || sessionDate.day() === 6) continue;
-      
-      const classInfo = mockClasses[i % 3];
-      
-      mockData.push({
-        _id: `attendance_${i}`,
-        sessionId: {
-          _id: `session_${i}`,
-          sessionDate: sessionDate.toISOString(),
-          classId: classInfo
-        },
-        studentId: {
-          _id: 'current_student',
-          fullname: 'Nguyễn Văn An',
-          studentId: 'SV2023001'
-        },
-        status: Math.random() > 0.8 ? StatusEnum.ABSENT : 
-                Math.random() > 0.9 ? StatusEnum.LATE : StatusEnum.PRESENT,
-        note: i % 7 === 0 ? 'Có phép do ốm' : undefined,
-        createdAt: sessionDate.toISOString(),
-        updatedAt: sessionDate.toISOString()
-      });
-    }
-    
-    return mockData.sort((a, b) => 
-      dayjs(b.sessionId?.sessionDate || 0).valueOf() - dayjs(a.sessionId?.sessionDate || 0).valueOf()
-    );
-  };
-
   const applyFilters = () => {
-    let filtered = [...attendanceData];
+    let filtered = [...studyHistory];
 
     // Filter by class
     if (selectedClass !== 'all') {
-      filtered = filtered.filter(record => 
-        record.sessionId?.classId?._id === selectedClass
-      );
+      filtered = filtered.filter(record => record.classInfo?._id === selectedClass);
     }
 
     // Filter by status
@@ -193,12 +135,12 @@ const AttendancePage = () => {
     // Filter by date range
     if (dateRange && dateRange[0] && dateRange[1]) {
       filtered = filtered.filter(record => {
-        const recordDate = dayjs(record.sessionId?.sessionDate);
+        const recordDate = dayjs(record.sessionDate);
         return recordDate.isAfter(dateRange[0], 'day') && recordDate.isBefore(dateRange[1], 'day');
       });
     }
 
-    setFilteredData(filtered);
+    setFilteredHistory(filtered);
   };
 
   const getStatusColor = (status: StatusEnum) => {
@@ -229,51 +171,42 @@ const AttendancePage = () => {
   };
 
   // Calculate statistics
-  const totalSessions = filteredData.length;
-  const presentCount = filteredData.filter(record => record.status === StatusEnum.PRESENT).length;
-  const absentCount = filteredData.filter(record => record.status === StatusEnum.ABSENT).length;
-  const lateCount = filteredData.filter(record => record.status === StatusEnum.LATE).length;
+  const totalSessions = filteredHistory.length;
+  const presentCount = filteredHistory.filter(record => record.status === StatusEnum.PRESENT).length;
+  const absentCount = filteredHistory.filter(record => record.status === StatusEnum.ABSENT).length;
+  const lateCount = filteredHistory.filter(record => record.status === StatusEnum.LATE).length;
   const attendanceRate = totalSessions > 0 ? ((presentCount + lateCount) / totalSessions * 100) : 0;
 
   const columns = [
     {
       title: 'Ngày học',
-      dataIndex: ['sessionId', 'sessionDate'],
+      dataIndex: 'sessionDate',
       key: 'sessionDate',
-      render: (date: string) => (
-        <Space direction="vertical" size={0}>
-          <Text>{date ? dayjs(date).format('DD/MM/YYYY') : 'N/A'}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {date ? dayjs(date).format('dddd') : ''}
-          </Text>
-        </Space>
-      ),
-      sorter: (a: IAttendanceHistory, b: IAttendanceHistory) => 
-        dayjs(a.sessionId?.sessionDate || 0).valueOf() - dayjs(b.sessionId?.sessionDate || 0).valueOf(),
+      render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+      sorter: (a: StudyHistoryRecord, b: StudyHistoryRecord) => 
+        dayjs(a.sessionDate).valueOf() - dayjs(b.sessionDate).valueOf(),
     },
     {
       title: 'Lớp học',
-      key: 'class',
-      render: (record: IAttendanceHistory) => (
+      dataIndex: 'className',
+      key: 'className',
+      render: (text: string, record: StudyHistoryRecord) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{record.sessionId.classId?.name || 'Chưa có tên lớp'}</Text>
+          <Text strong>{text}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            <BookOutlined style={{ marginRight: 4 }} />
-            {record.sessionId.classId?.subjectId?.name || 'Chưa có môn học'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            Mã: {record.sessionId.classId?.subjectId?.code || 'N/A'}
+            {record.subjectName}
           </Text>
         </Space>
       ),
     },
     {
       title: 'Giảng viên',
-      key: 'teacher',
-      render: (record: IAttendanceHistory) => (
+      dataIndex: 'teacherName',
+      key: 'teacherName',
+      render: (text: string) => (
         <Space>
           <UserOutlined style={{ color: '#1890ff' }} />
-          <Text>{record.sessionId.classId.teacherId?.fullname || 'Chưa có giảng viên'}</Text>
+          {text}
         </Space>
       ),
     },
@@ -291,7 +224,7 @@ const AttendancePage = () => {
         { text: 'Vắng mặt', value: StatusEnum.ABSENT },
         { text: 'Muộn', value: StatusEnum.LATE },
       ],
-      onFilter: (value: boolean | React.Key, record: IAttendanceHistory) => record.status === value,
+      onFilter: (value: boolean | React.Key, record: StudyHistoryRecord) => record.status === value,
     },
     {
       title: 'Ghi chú',
@@ -315,7 +248,7 @@ const AttendancePage = () => {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Spin size="large" />
-        <div style={{ marginTop: 16 }}>Đang tải dữ liệu điểm danh...</div>
+        <div style={{ marginTop: 16 }}>Đang tải lịch sử học tập...</div>
       </div>
     );
   }
@@ -324,22 +257,10 @@ const AttendancePage = () => {
     <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
       <div style={{ marginBottom: 24 }}>
         <Title level={2} style={{ color: '#1890ff', marginBottom: 8 }}>
-          <CalendarOutlined /> Lịch sử điểm danh
+          <HistoryOutlined /> Lịch sử học tập
         </Title>
-        <Text type="secondary">Theo dõi và quản lý lịch sử điểm danh của bạn</Text>
+        <Text type="secondary">Theo dõi lịch sử tham gia các buổi học và thống kê điểm danh</Text>
       </div>
-
-      {/* Alert for attendance rate */}
-      {attendanceRate < 80 && totalSessions > 0 && (
-        <Alert
-          message="Cảnh báo tỷ lệ tham gia thấp"
-          description={`Tỷ lệ tham gia của bạn hiện tại là ${attendanceRate.toFixed(1)}%. Hãy cố gắng tham gia đầy đủ các buổi học để đạt yêu cầu tối thiểu 80%.`}
-          type="warning"
-          icon={<InfoCircleOutlined />}
-          style={{ marginBottom: 24 }}
-          showIcon
-        />
-      )}
 
       {/* Statistics Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -361,10 +282,6 @@ const AttendancePage = () => {
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
-            <Badge 
-              count={`+${lateCount} muộn`} 
-              style={{ backgroundColor: '#faad14' }}
-            />
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
@@ -384,28 +301,15 @@ const AttendancePage = () => {
               value={attendanceRate}
               precision={1}
               suffix="%"
-              prefix={<TrophyOutlined />}
-              valueStyle={{ 
-                color: attendanceRate >= 80 ? '#52c41a' : 
-                       attendanceRate >= 60 ? '#faad14' : '#f5222d' 
-              }}
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: attendanceRate >= 80 ? '#52c41a' : attendanceRate >= 60 ? '#faad14' : '#f5222d' }}
             />
             <Progress 
               percent={attendanceRate} 
               showInfo={false} 
-              strokeColor={
-                attendanceRate >= 80 ? '#52c41a' : 
-                attendanceRate >= 60 ? '#faad14' : '#f5222d'
-              }
+              strokeColor={attendanceRate >= 80 ? '#52c41a' : attendanceRate >= 60 ? '#faad14' : '#f5222d'}
               style={{ marginTop: 8 }}
             />
-            <Text style={{ 
-              fontSize: 12, 
-              color: attendanceRate >= 80 ? '#52c41a' : '#f5222d',
-              fontWeight: 500
-            }}>
-              {attendanceRate >= 80 ? 'Đạt yêu cầu' : 'Chưa đạt yêu cầu (≥80%)'}
-            </Text>
           </Card>
         </Col>
       </Row>
@@ -414,6 +318,7 @@ const AttendancePage = () => {
       <Card style={{ marginBottom: 24 }}>
         <Row gutter={[16, 16]} align="middle">
           <Col>
+            <FilterOutlined style={{ marginRight: 8, color: '#1890ff' }} />
             <Text strong>Bộ lọc:</Text>
           </Col>
           <Col>
@@ -462,21 +367,20 @@ const AttendancePage = () => {
 
       {/* Data Table */}
       <Card>
-        {filteredData.length === 0 ? (
+        {filteredHistory.length === 0 ? (
           <Empty
-            description="Không có dữ liệu điểm danh"
+            description="Không có dữ liệu lịch sử học tập"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (
           <Table
             columns={columns}
-            dataSource={filteredData}
-            rowKey="_id"
+            dataSource={filteredHistory}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
               showQuickJumper: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} bản ghi`,
+              showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} buổi học`,
             }}
             scroll={{ x: 800 }}
           />
@@ -486,4 +390,4 @@ const AttendancePage = () => {
   );
 };
 
-export default AttendancePage;
+export default StudyHistoryPage;
