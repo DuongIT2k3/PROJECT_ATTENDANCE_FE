@@ -2,7 +2,7 @@ import { Layout } from "antd";
 import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import ContentWrapper from "../common/ContentWrapper";
-import { TeamOutlined, CalendarOutlined } from "@ant-design/icons";
+import { TeamOutlined, CalendarOutlined, HistoryOutlined, ScheduleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import SiderMenu from "../common/SideBarMenu";
 import HeaderBar from "../common/HeaderBar";
@@ -20,9 +20,19 @@ const teacherMenu = [
 		label: <Link to="/teacher/attendance">Điểm danh</Link>,
 	},
 	{
+		key: "/teacher/attendance/history",
+		icon: <HistoryOutlined />,
+		label: <Link to="/teacher/attendance/history">Lịch sử điểm danh</Link>,
+	},
+	{
 		key: "/teacher/sessions",
-		icon: <CalendarOutlined />,
-		label: <Link to="/teacher/sessions">Lịch sử điểm danh</Link>,
+		icon: <ScheduleOutlined />,
+		label: <Link to="/teacher/sessions">Quản lý buổi học</Link>,
+	},
+	{
+		key: "/teacher/schedule",
+		icon: <ClockCircleOutlined />,
+		label: <Link to="/teacher/schedule">Lịch giảng dạy</Link>,
 	},
 ];
 
@@ -30,7 +40,9 @@ const getBreadcrumb = (pathname: string) => {
 	const map: Record<string, string> = {
 		"/teacher/classes": "Quản lý lớp học",
 		"/teacher/attendance": "Điểm danh",
-		"/teacher/sessions": "Lịch sử điểm danh",
+		"/teacher/attendance/history": "Lịch sử điểm danh",
+		"/teacher/sessions": "Quản lý buổi học",
+		"/teacher/schedule": "Lịch giảng dạy",
 	};
 	const paths = pathname.split("/").filter(Boolean);
 	const crumbs = [
@@ -43,6 +55,14 @@ const getBreadcrumb = (pathname: string) => {
 					},
 			  ]
 			: []),
+		...(paths[2]
+			? [
+					{
+						path: `/teacher/${paths[1]}/${paths[2]}`,
+						label: map[`/teacher/${paths[1]}/${paths[2]}`] || paths[2],
+					},
+			  ]
+			: []),
 	];
 	return crumbs;
 };
@@ -51,6 +71,13 @@ const TeacherLayout = () => {
 	const location = useLocation();
 
 	const selectedKeys = useMemo(() => {
+		
+		const exactMatch = teacherMenu.find((item) => item.key === location.pathname);
+		if (exactMatch) {
+			return [exactMatch.key];
+		}
+		
+		// Nếu không có exact match, tìm theo prefix
 		const match = teacherMenu.find((item) => location.pathname.startsWith(item.key));
 		return match ? [match.key] : [];
 	}, [location.pathname]);

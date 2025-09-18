@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   Select,
@@ -11,6 +12,9 @@ import {
   Row,
   Col,
   Typography,
+  Input,
+  Tag,
+  Tooltip,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -18,10 +22,16 @@ import {
   ClockCircleOutlined,
   UserOutlined,
   SaveOutlined,
+  HistoryOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { getAllClasses, getDetailClass } from "../../../services/classServices";
 import { getAllSessionsByClassId } from "../../../services/sessionServices";
-import { checkAttendanceStatus, updateAttendance } from "../../../services/attendanceServices";
+import {
+  checkAttendanceStatus,
+  updateAttendance,
+  createAttendance,
+} from "../../../services/attendanceServices";
 import { IClass } from "../../../types/Classes";
 import { ISession } from "../../../types/Session";
 import { IAttendance } from "../../../types/Attendance";
@@ -29,6 +39,7 @@ import { StatusEnum } from "../../../types";
 
 const { Option } = Select;
 const { Text } = Typography;
+const { TextArea } = Input;
 
 interface AttendanceRecord {
   studentId: string;
@@ -40,22 +51,26 @@ interface AttendanceRecord {
 const ManagerAttendancePage = () => {
   const [selectedClassId, setSelectedClassId] = useState<string>();
   const [selectedSessionId, setSelectedSessionId] = useState<string>();
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    AttendanceRecord[]
+  >([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [isAttendanceCompleted, setIsAttendanceCompleted] = useState(false);
 
   const queryClient = useQueryClient();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
 
-  // Queries
   const { data: classesData, isLoading: loadingClasses } = useQuery({
     queryKey: ["classes", user?._id],
-    queryFn: () => getAllClasses({ teacherId: user?._id, isDeleted: false, limit: "100" }),
+    queryFn: () =>
+      getAllClasses({ teacherId: user?._id, isDeleted: false, limit: "100" }),
   });
 
   const { data: sessionsData, isLoading: loadingSessions } = useQuery({
     queryKey: ["sessions", selectedClassId],
-    queryFn: () => getAllSessionsByClassId(selectedClassId!, { isDeleted: false }),
+    queryFn: () =>
+      getAllSessionsByClassId(selectedClassId!, { isDeleted: false }),
     enabled: !!selectedClassId,
   });
 
@@ -65,60 +80,102 @@ const ManagerAttendancePage = () => {
     enabled: !!selectedClassId,
   });
 
-  const { data: attendanceData } = useQuery({
+  const { data: attendanceData, refetch: refetchAttendance } = useQuery({
     queryKey: ["attendance", selectedSessionId],
     queryFn: () => checkAttendanceStatus(selectedSessionId!),
     enabled: !!selectedSessionId,
   });
 
-  // Mutation
+  // Mutation cho cập nhật điểm danh
   const updateMutation = useMutation({
     mutationFn: (data: { sessionId: string; attendances: any[] }) =>
       updateAttendance(data.sessionId, { attendances: data.attendances }),
     onSuccess: () => {
-      message.success("Điểm danh thành công");
+      message.success("Cập nhật điểm danh thành công");
       setHasChanges(false);
       setIsAttendanceCompleted(true);
-      queryClient.invalidateQueries({ queryKey: ["attendance", selectedSessionId] });
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({
+        queryKey: ["attendance", selectedSessionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["attendance-history"],
+      });
+      
+      // Refetch để cập nhật UI
+      refetchAttendance();
     },
-    onError: () => message.error("Điểm danh thất bại"),
+    onError: (error: any) => {
+      message.error(error?.response?.data?.message || "Cập nhật điểm danh thất bại");
+    },
   });
 
-  // Effects
+  // Mutation cho tạo điểm danh mới
+  const createMutation = useMutation({
+    mutationFn: (data: { sessionId: string; attendances: any[] }) =>
+      createAttendance({ sessionId: data.sessionId, attendances: data.attendances }),
+    onSuccess: () => {
+      message.success("Tạo điểm danh thành công");
+      setHasChanges(false);
+      setIsAttendanceCompleted(true);
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({
+        queryKey: ["attendance", selectedSessionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["attendance-history"],
+      });
+      
+      // Refetch để cập nhật UI
+      refetchAttendance();
+    },
+    onError: (error: any) => {
+      message.error(error?.response?.data?.message || "Tạo điểm danh thất bại");
+    },
+  });
+
   useEffect(() => {
     setSelectedSessionId(undefined);
     setAttendanceRecords([]);
     setIsAttendanceCompleted(false);
+    setHasChanges(false);
   }, [selectedClassId]);
 
   useEffect(() => {
     setIsAttendanceCompleted(false);
     setHasChanges(false);
-    setAttendanceRecords([]); // Reset về empty array
+    setAttendanceRecords([]);
   }, [selectedSessionId]);
 
   useEffect(() => {
     if (attendanceData && classDetailData?.data) {
       const students = classDetailData.data.studentIds || [];
-      
-      // Đảm bảo existingAttendance là array
+
       let existingAttendance: IAttendance[] = [];
-      if (Array.isArray(attendanceData?.data)) {
-        existingAttendance = attendanceData.data;
-      } else if (attendanceData?.data && typeof attendanceData.data === 'object') {
-        const dataObj = attendanceData.data as any;
-        if (dataObj.attendances && Array.isArray(dataObj.attendances)) {
-          existingAttendance = dataObj.attendances;
+      
+      // Xử lý response từ API checkAttendanceStatus
+      if (attendanceData?.data) {
+        if (Array.isArray(attendanceData.data)) {
+          existingAttendance = attendanceData.data;
+        } else if (typeof attendanceData.data === "object") {
+          const dataObj = attendanceData.data as any;
+          if (dataObj.hasAttendance && Array.isArray(dataObj.attendances)) {
+            existingAttendance = dataObj.attendances;
+          }
         }
       }
 
-      // Kiểm tra xem đã có điểm danh hay chưa
       const hasExistingAttendance = existingAttendance.length > 0;
       setIsAttendanceCompleted(hasExistingAttendance);
 
       const records = students.map((student: any) => {
-        const attendance = existingAttendance.find((att: IAttendance) =>
-          (typeof att.studentId === "object" ? att.studentId._id : att.studentId) === student._id
+        const attendance = existingAttendance.find(
+          (att: IAttendance) =>
+            (typeof att.studentId === "object"
+              ? att.studentId._id
+              : att.studentId) === student._id
         );
         return {
           studentId: student._id,
@@ -131,41 +188,103 @@ const ManagerAttendancePage = () => {
       setAttendanceRecords(records);
       setHasChanges(false);
     } else {
-      // Reset về empty array nếu không có data
       setAttendanceRecords([]);
       setIsAttendanceCompleted(false);
     }
   }, [attendanceData, classDetailData]);
 
-  // Handlers
   const handleStatusChange = (studentId: string, status: StatusEnum) => {
-    if (isAttendanceCompleted) return; // Chặn thay đổi nếu đã hoàn thành
-    setAttendanceRecords(prev =>
-      prev.map(record => record.studentId === studentId ? { ...record, status } : record)
+    if (isAttendanceCompleted) return;
+    setAttendanceRecords((prev) =>
+      prev.map((record) =>
+        record.studentId === studentId ? { ...record, status } : record
+      )
+    );
+    setHasChanges(true);
+  };
+
+  const handleNoteChange = (studentId: string, note: string) => {
+    if (isAttendanceCompleted) return;
+    setAttendanceRecords((prev) =>
+      prev.map((record) =>
+        record.studentId === studentId ? { ...record, note } : record
+      )
     );
     setHasChanges(true);
   };
 
   const handleBulkStatus = (status: StatusEnum) => {
-    if (isAttendanceCompleted) return; // Chặn thay đổi nếu đã hoàn thành
-    setAttendanceRecords(prev => prev.map(record => ({ ...record, status })));
+    if (isAttendanceCompleted) return;
+    setAttendanceRecords((prev) =>
+      prev.map((record) => ({ ...record, status }))
+    );
     setHasChanges(true);
-    message.success(`Đã đánh dấu tất cả: ${status === StatusEnum.PRESENT ? "Có mặt" : status === StatusEnum.LATE ? "Muộn" : "Vắng"}`);
+    message.success(
+      `Đã đánh dấu tất cả: ${
+        status === StatusEnum.PRESENT
+          ? "Có mặt"
+          : status === StatusEnum.LATE
+          ? "Muộn"
+          : "Vắng"
+      }`
+    );
   };
 
   const handleSave = () => {
     if (!selectedSessionId || !hasChanges) return;
-    
-    const attendances = attendanceRecords.map(record => ({
+
+    // Validation: Đảm bảo có ít nhất một sinh viên được điểm danh
+    if (attendanceRecords.length === 0) {
+      message.warning("Không có sinh viên nào để điểm danh");
+      return;
+    }
+
+    const attendances = attendanceRecords.map((record) => ({
       studentId: record.studentId,
       status: record.status,
       note: record.note || "",
     }));
 
-    updateMutation.mutate({ sessionId: selectedSessionId, attendances });
+    // Nếu chưa có điểm danh thì tạo mới, ngược lại thì cập nhật
+    if (isAttendanceCompleted) {
+      updateMutation.mutate({ sessionId: selectedSessionId, attendances });
+    } else {
+      createMutation.mutate({ sessionId: selectedSessionId, attendances });
+    }
   };
 
-  // Render helpers
+  const handleRefresh = () => {
+    if (selectedSessionId) {
+      refetchAttendance();
+    }
+  };
+
+  const getStatusColor = (status: StatusEnum) => {
+    switch (status) {
+      case StatusEnum.PRESENT:
+        return "#52c41a";
+      case StatusEnum.LATE:
+        return "#faad14";
+      case StatusEnum.ABSENT:
+        return "#ff4d4f";
+      default:
+        return "#d9d9d9";
+    }
+  };
+
+  const getStatusText = (status: StatusEnum) => {
+    switch (status) {
+      case StatusEnum.PRESENT:
+        return "Có mặt";
+      case StatusEnum.LATE:
+        return "Muộn";
+      case StatusEnum.ABSENT:
+        return "Vắng";
+      default:
+        return "Chưa xác định";
+    }
+  };
+
   const getStatusSelect = (record: AttendanceRecord) => (
     <Select
       value={record.status}
@@ -196,26 +315,85 @@ const ManagerAttendancePage = () => {
     </Select>
   );
 
-  // Table columns
   const columns = [
-    { title: "STT", key: "index", width: 60, align: "center" as const, render: (_: any, __: any, index: number) => index + 1 },
-    { title: "Sinh viên", dataIndex: "studentName", key: "studentName", width: 250 },
-    { 
-      title: "Trạng thái điểm danh", 
-      key: "status", 
-      width: 200, 
-      align: "center" as const, 
-      render: (_: any, record: AttendanceRecord) => getStatusSelect(record)
+    {
+      title: "STT",
+      key: "index",
+      width: 60,
+      align: "center" as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
+      title: "Sinh viên",
+      dataIndex: "studentName",
+      key: "studentName",
+      width: 200,
+      render: (text: string, record: AttendanceRecord) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{text}</div>
+          <Tag color={getStatusColor(record.status)}>
+            {getStatusText(record.status)}
+          </Tag>
+        </div>
+      ),
+    },
+    {
+      title: "Trạng thái điểm danh",
+      key: "status",
+      width: 200,
+      align: "center" as const,
+      render: (_: any, record: AttendanceRecord) => getStatusSelect(record),
+    },
+    {
+      title: "Ghi chú",
+      key: "note",
+      width: 250,
+      render: (_: any, record: AttendanceRecord) => (
+        <TextArea
+          value={record.note}
+          onChange={(e) => handleNoteChange(record.studentId, e.target.value)}
+          placeholder="Ghi chú..."
+          autoSize={{ minRows: 1, maxRows: 3 }}
+          disabled={isAttendanceCompleted}
+          size="small"
+        />
+      ),
     },
   ];
 
-  const selectedClass = classesData?.data?.find((c: IClass) => c._id === selectedClassId);
-  const selectedSession = sessionsData?.data?.find((s: ISession) => s._id === selectedSessionId);
+  const selectedClass = classesData?.data?.find(
+    (c: IClass) => c._id === selectedClassId
+  );
+  const selectedSession = sessionsData?.data?.find(
+    (s: ISession) => s._id === selectedSessionId
+  );
+
+  // Thống kê điểm danh
+  const attendanceStats = {
+    total: attendanceRecords.length,
+    present: attendanceRecords.filter(r => r.status === StatusEnum.PRESENT).length,
+    late: attendanceRecords.filter(r => r.status === StatusEnum.LATE).length,
+    absent: attendanceRecords.filter(r => r.status === StatusEnum.ABSENT).length,
+  };
 
   return (
     <div style={{ padding: "24px" }}>
-      <Card title={<><UserOutlined /> Điểm danh lớp học</>}>
-        {/* Selectors */}
+      <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <UserOutlined /> Điểm danh lớp học
+            </div>
+            <Button
+              type="text"
+              icon={<HistoryOutlined />}
+              onClick={() => navigate("/teacher/attendance/history")}
+            >
+              Xem lịch sử
+            </Button>
+          </div>
+        }
+      >
         <Row gutter={16} style={{ marginBottom: 24 }}>
           <Col span={12}>
             <Text strong>Lớp học:</Text>
@@ -225,6 +403,8 @@ const ManagerAttendancePage = () => {
               onChange={setSelectedClassId}
               style={{ width: "100%", marginTop: 8 }}
               loading={loadingClasses}
+              showSearch
+              optionFilterProp="children"
             >
               {classesData?.data?.map((cls: IClass) => (
                 <Option key={cls._id} value={cls._id}>
@@ -235,86 +415,138 @@ const ManagerAttendancePage = () => {
           </Col>
           <Col span={12}>
             <Text strong>Buổi học:</Text>
-            <Select
-              placeholder="Chọn buổi học"
-              value={selectedSessionId}
-              onChange={setSelectedSessionId}
-              style={{ width: "100%", marginTop: 8 }}
-              loading={loadingSessions}
-              disabled={!selectedClassId}
-            >
-              {sessionsData?.data?.map((session: ISession) => (
-                <Option key={session._id} value={session._id}>
-                  {new Date(session.sessionDate).toLocaleDateString("vi-VN")}
-                  {session.note && ` - ${session.note}`}
-                </Option>
-              ))}
-            </Select>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <Select
+                placeholder="Chọn buổi học"
+                value={selectedSessionId}
+                onChange={setSelectedSessionId}
+                style={{ flex: 1 }}
+                loading={loadingSessions}
+                disabled={!selectedClassId}
+                showSearch
+                optionFilterProp="children"
+              >
+                {sessionsData?.data?.map((session: ISession) => (
+                  <Option key={session._id} value={session._id}>
+                    {new Date(session.sessionDate).toLocaleDateString("vi-VN")}
+                    {session.note && ` - ${session.note}`}
+                  </Option>
+                ))}
+              </Select>
+              <Tooltip title="Làm mới dữ liệu">
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleRefresh}
+                  disabled={!selectedSessionId}
+                />
+              </Tooltip>
+            </div>
           </Col>
         </Row>
 
         {/* Info & Actions */}
         {selectedClass && selectedSession && (
           <>
-            <div style={{ marginBottom: 16, padding: 12, background: "#f5f5f5", borderRadius: 4 }}>
-              <Text strong>
-                {selectedClass.name} - {selectedClass.subjectId?.name} - {" "}
-                {new Date(selectedSession.sessionDate).toLocaleDateString("vi-VN")}
-              </Text>
+            <div
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                background: "#f5f5f5",
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text strong>
+                  {selectedClass.name} - {selectedClass.subjectId?.name} -{" "}
+                  {new Date(selectedSession.sessionDate).toLocaleDateString(
+                    "vi-VN"
+                  )}
+                </Text>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <Text>Tổng: <strong>{attendanceStats.total}</strong></Text>
+                  <Text style={{ color: '#52c41a' }}>Có mặt: <strong>{attendanceStats.present}</strong></Text>
+                  <Text style={{ color: '#faad14' }}>Muộn: <strong>{attendanceStats.late}</strong></Text>
+                  <Text style={{ color: '#ff4d4f' }}>Vắng: <strong>{attendanceStats.absent}</strong></Text>
+                </div>
+              </div>
             </div>
 
             {attendanceRecords.length > 0 && (
               <>
-                {/* Thông báo đã hoàn thành */}
                 {isAttendanceCompleted && (
-                  <div style={{ marginBottom: 16, padding: 12, background: "#e6f7ff", border: "1px solid #91d5ff", borderRadius: 4 }}>
+                  <div
+                    style={{
+                      marginBottom: 16,
+                      padding: 12,
+                      background: "#e6f7ff",
+                      border: "1px solid #91d5ff",
+                      borderRadius: 4,
+                    }}
+                  >
                     <Text style={{ color: "#1890ff" }}>
-                      ✅ Buổi học này đã được điểm danh. Không thể chỉnh sửa.
+                      ✅ Buổi học này đã được điểm danh. Bạn có thể xem hoặc chỉnh sửa điểm danh.
                     </Text>
                   </div>
                 )}
 
-                {/* Bulk Actions */}
-                {!isAttendanceCompleted && (
-                  <div style={{ marginBottom: 16, textAlign: "center" }}>
-                    <Space>
-                      <Text strong>Điểm danh hàng loạt:</Text>
-                      <Button size="small" type="primary" onClick={() => handleBulkStatus(StatusEnum.PRESENT)}>
-                        Tất cả có mặt
-                      </Button>
-                      <Button size="small" danger onClick={() => handleBulkStatus(StatusEnum.ABSENT)}>
-                        Tất cả vắng
-                      </Button>
-                      <Button size="small" style={{ background: "#faad14", borderColor: "#faad14", color: "white" }} onClick={() => handleBulkStatus(StatusEnum.LATE)}>
-                        Tất cả muộn
-                      </Button>
-                    </Space>
-                  </div>
-                )}
-
-                {/* Save Button */}
-                {!isAttendanceCompleted && (
-                  <div style={{ marginBottom: 16, textAlign: "right" }}>
+                {/* Bulk actions */}
+                <div style={{ marginBottom: 16, textAlign: "center" }}>
+                  <Space>
+                    <Text strong>Điểm danh hàng loạt:</Text>
                     <Button
+                      size="small"
                       type="primary"
-                      icon={<SaveOutlined />}
-                      onClick={handleSave}
-                      loading={updateMutation.isPending}
-                      disabled={!hasChanges}
+                      onClick={() => handleBulkStatus(StatusEnum.PRESENT)}
+                      disabled={isAttendanceCompleted}
                     >
-                      Lưu điểm danh
+                      Tất cả có mặt
                     </Button>
-                  </div>
-                )}
+                    <Button
+                      size="small"
+                      danger
+                      onClick={() => handleBulkStatus(StatusEnum.ABSENT)}
+                      disabled={isAttendanceCompleted}
+                    >
+                      Tất cả vắng
+                    </Button>
+                    <Button
+                      size="small"
+                      style={{
+                        background: "#faad14",
+                        borderColor: "#faad14",
+                        color: "white",
+                      }}
+                      onClick={() => handleBulkStatus(StatusEnum.LATE)}
+                      disabled={isAttendanceCompleted}
+                    >
+                      Tất cả muộn
+                    </Button>
+                  </Space>
+                </div>
 
-                {/* Table */}
+                {/* Save button */}
+                <div style={{ marginBottom: 16, textAlign: "right" }}>
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSave}
+                    loading={updateMutation.isPending || createMutation.isPending}
+                    disabled={!hasChanges}
+                  >
+                    {isAttendanceCompleted ? "Cập nhật điểm danh" : "Lưu điểm danh"}
+                  </Button>
+                </div>
+
                 <Table
                   columns={columns}
-                  dataSource={Array.isArray(attendanceRecords) ? attendanceRecords : []}
+                  dataSource={
+                    Array.isArray(attendanceRecords) ? attendanceRecords : []
+                  }
                   rowKey="studentId"
                   pagination={false}
                   size="small"
-                  scroll={{ y: 400 }}
+                  scroll={{ y: 500 }}
+                  bordered
                 />
               </>
             )}
