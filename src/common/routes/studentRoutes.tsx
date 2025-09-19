@@ -1,4 +1,5 @@
 import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import AttendancePage from "../pages/student/attendance/AttendancePage";
 import ClassOfStudentPage from "../pages/student/class/ClassOfStudentPage";
 import SchedulePage from "../pages/student/schedule/SchedulePage";
@@ -18,7 +19,8 @@ const studentRoutes: RouteObject[] = [
             </ProtectedRoutes>
         ),
         children: [
-            { index: true, element: <StudentDashboard /> }, // Dashboard mặc định
+            { index: true, element: <Navigate to="classes" replace /> }, // Redirect đến classes
+            { path: "dashboard", element: <StudentDashboard /> },
             { path: "classes", element: <ClassOfStudentPage /> },
             { path: "schedule", element: <SchedulePage /> },
             { path: "attendance", element: <AttendancePage /> },

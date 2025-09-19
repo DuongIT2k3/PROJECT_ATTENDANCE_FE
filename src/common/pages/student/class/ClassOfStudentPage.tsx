@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Row, Col, Typography, Tag, Empty, Spin, Button, Space, Divider, Badge } from 'antd';
+import { Card, Row, Col, Typography, Tag, Empty, Spin, Space, Divider, Badge } from 'antd';
 import { BookOutlined, UserOutlined, CalendarOutlined, ClockCircleOutlined, TeamOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { IClass } from '../../../types/Classes';
 import { getAllClasses } from '../../../services/classServices';
@@ -107,11 +107,6 @@ const ClassOfStudentPage = () => {
                     />
                   </div>
                 }
-                actions={[
-                  <Button type="primary" size="small" ghost>
-                    Xem chi tiết
-                  </Button>
-                ]}
               >
                 <div style={{ marginBottom: 12 }}>
                   <Title level={4} style={{ marginBottom: 4, color: '#262626' }}>

@@ -32,7 +32,7 @@ const LoginPage = () => {
             nav("/teacher/attendance");
             break;
           case RoleEnum.STUDENT:
-            nav("/student/attendances");
+            nav("/student");
             break;
           default:
              throw new Error("Vai trò không hợp lệ")     

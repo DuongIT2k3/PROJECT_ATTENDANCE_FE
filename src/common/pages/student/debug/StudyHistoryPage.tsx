@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Table, 
   Card, 
@@ -25,9 +25,9 @@ import {
   ClockCircleOutlined,
   FilterOutlined
 } from '@ant-design/icons';
-import { ISession } from '../../../types/Session';
+import { IAttendanceHistory } from '../../../types/Attendance';
 import { IClass } from '../../../types/Classes';
-import { getAllSessionsByClassId } from '../../../services/sessionServices';
+import { getAttendanceHistory } from '../../../services/attendanceServices';
 import { getAllClasses } from '../../../services/classServices';
 import { StatusEnum } from '../../../types';
 import dayjs, { Dayjs } from 'dayjs';
@@ -48,7 +48,18 @@ interface StudyHistoryRecord {
   teacherName: string;
   status: StatusEnum;
   note?: string;
-  classInfo: IClass;
+  classInfo: {
+    _id: string;
+    name: string;
+    subjectId?: {
+      _id: string;
+      name: string;
+    };
+    teacherId?: {
+      _id: string;
+      fullname: string;
+    };
+  };
 }
 
 const StudyHistoryPage = () => {
@@ -60,66 +71,7 @@ const StudyHistoryPage = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [studyHistory, selectedClass, selectedStatus, dateRange]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      // Fetch classes first
-      const classResponse = await getAllClasses();
-      const classData = classResponse.data || [];
-      setClasses(classData);
-
-      // Fetch sessions for each class and simulate attendance data
-      let allHistory: StudyHistoryRecord[] = [];
-      
-      for (const classItem of classData) {
-        try {
-          const sessionsResponse = await getAllSessionsByClassId(classItem._id);
-          const sessions = sessionsResponse.data || [];
-          
-          // Simulate attendance records for past sessions
-          const pastSessions = sessions.filter(session => 
-            dayjs(session.sessionDate).isBefore(dayjs(), 'day')
-          );
-
-          const historyRecords = pastSessions.map((session: ISession) => ({
-            key: `${session._id}_student`,
-            sessionId: session._id,
-            sessionDate: session.sessionDate,
-            className: classItem.name || 'Chưa có tên lớp',
-            subjectName: classItem.subjectId?.name || 'Chưa có môn học',
-            teacherName: classItem.teacherId?.fullname || 'Chưa có giảng viên',
-            status: Math.random() > 0.8 ? StatusEnum.ABSENT : 
-                    Math.random() > 0.9 ? StatusEnum.LATE : StatusEnum.PRESENT,
-            note: session.note,
-            classInfo: classItem
-          }));
-          
-          allHistory = [...allHistory, ...historyRecords];
-        } catch (error) {
-          console.warn(`Failed to fetch sessions for class ${classItem._id}:`, error);
-        }
-      }
-
-      // Sort by date descending
-      allHistory.sort((a, b) => dayjs(b.sessionDate).valueOf() - dayjs(a.sessionDate).valueOf());
-      
-      setStudyHistory(allHistory);
-    } catch (error) {
-      console.error('Error fetching study history:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...studyHistory];
 
     // Filter by class
@@ -141,6 +93,93 @@ const StudyHistoryPage = () => {
     }
 
     setFilteredHistory(filtered);
+  }, [studyHistory, selectedClass, selectedStatus, dateRange]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch classes first
+      const classResponse = await getAllClasses();
+      const classData = classResponse.data || [];
+      setClasses(classData);
+      
+      const attendanceResponse = await getAttendanceHistory({ limit: 1000 });
+      const attendanceData: IAttendanceHistory[] = attendanceResponse?.data || [];
+
+      // Map attendance data với thông tin từ classes
+      const historyRecords: StudyHistoryRecord[] = attendanceData.map((attendance: IAttendanceHistory) => {
+        const classId = attendance.sessionId?.classId;
+        
+        // Tìm thông tin class từ classes array nếu cần
+        let displayClassName = 'Chưa có tên lớp';
+        let displaySubjectName = 'Chưa có môn học';
+        let displayTeacherName = 'Chưa có giảng viên';
+        let classInfo = null;
+        
+        if (typeof classId === 'string') {
+          const foundClass = classData.find(c => c._id === classId);
+          if (foundClass) {
+            displayClassName = foundClass.name;
+            displaySubjectName = foundClass.subjectId?.name || 'Chưa có môn học';
+            displayTeacherName = foundClass.teacherId?.fullname || 'Chưa có giảng viên';
+            classInfo = {
+              _id: foundClass._id,
+              name: foundClass.name,
+              subjectId: foundClass.subjectId,
+              teacherId: foundClass.teacherId
+            };
+          } else {
+            classInfo = {
+              _id: classId,
+              name: displayClassName,
+              subjectId: undefined,
+              teacherId: undefined
+            };
+          }
+        } else if (classId) {
+          displayClassName = classId.name;
+          displaySubjectName = classId.subjectId?.name || 'Chưa có môn học';
+          displayTeacherName = classId.teacherId?.fullname || 'Chưa có giảng viên';
+          classInfo = classId;
+        }
+        
+        return {
+          key: `${attendance._id}`,
+          sessionId: attendance.sessionId._id,
+          sessionDate: attendance.sessionId.sessionDate,
+          className: displayClassName,
+          subjectName: displaySubjectName,
+          teacherName: displayTeacherName,
+          status: attendance.status,
+          note: attendance.note,
+          classInfo: classInfo || {
+            _id: '',
+            name: displayClassName,
+            subjectId: undefined,
+            teacherId: undefined
+          }
+        };
+      });
+
+      
+      historyRecords.sort((a, b) => dayjs(b.sessionDate).valueOf() - dayjs(a.sessionDate).valueOf());
+      
+      setStudyHistory(historyRecords);
+    } catch (error) {
+      console.error('Error fetching study history:', error);
+      setStudyHistory([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: StatusEnum) => {

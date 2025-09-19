@@ -29,8 +29,12 @@ import {
 } from '@ant-design/icons';
 import { IClass } from '../../../types/Classes';
 import { ISession } from '../../../types/Session';
+import { IAttendanceHistory } from '../../../types/Attendance';
 import { getAllClasses } from '../../../services/classServices';
 import { getAllSessionsByClassId } from '../../../services/sessionServices';
+import { getAttendanceHistory } from '../../../services/attendanceServices';
+import { convertShiftToTime } from '../../../utils/convertShift';
+import { StatusEnum } from '../../../types';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
 
@@ -110,24 +114,47 @@ const StudentDashboard = () => {
       }).sort((a, b) => dayjs(a.sessionDate).valueOf() - dayjs(b.sessionDate).valueOf());
       setUpcomingSessions(upcomingSessionsFiltered.slice(0, 5));
 
-      // Calculate attendance statistics (mock data)
-      const pastSessions = allSessions.filter(session =>
-        dayjs(session.sessionDate).isBefore(today, 'day')
-      );
-      
-      const stats: AttendanceStats = {
-        totalSessions: pastSessions.length,
-        presentCount: Math.floor(pastSessions.length * 0.8),
-        absentCount: Math.floor(pastSessions.length * 0.1),
-        lateCount: Math.floor(pastSessions.length * 0.1),
-        attendanceRate: 0
-      };
-      
-      stats.attendanceRate = stats.totalSessions > 0 
-        ? ((stats.presentCount + stats.lateCount) / stats.totalSessions * 100) 
-        : 0;
-      
-      setAttendanceStats(stats);
+      // Calculate attendance statistics từ database
+      try {
+        const attendanceResponse = await getAttendanceHistory({ limit: 1000 });
+        const attendanceData: IAttendanceHistory[] = attendanceResponse?.data || [];
+        
+        const pastAttendances = attendanceData.filter((attendance: IAttendanceHistory) =>
+          dayjs(attendance.sessionId?.sessionDate).isBefore(today, 'day')
+        );
+        
+        const presentCount = pastAttendances.filter((attendance: IAttendanceHistory) => attendance.status === StatusEnum.PRESENT).length;
+        const absentCount = pastAttendances.filter((attendance: IAttendanceHistory) => attendance.status === StatusEnum.ABSENT).length;
+        const lateCount = pastAttendances.filter((attendance: IAttendanceHistory) => attendance.status === StatusEnum.LATE).length;
+        
+        const stats: AttendanceStats = {
+          totalSessions: pastAttendances.length,
+          presentCount,
+          absentCount,
+          lateCount,
+          attendanceRate: pastAttendances.length > 0 
+            ? ((presentCount + lateCount) / pastAttendances.length * 100) 
+            : 0
+        };
+        
+        setAttendanceStats(stats);
+      } catch (error) {
+        console.error('Error fetching attendance statistics:', error);
+        // Fallback: calculate basic stats from sessions
+        const pastSessions = allSessions.filter(session =>
+          dayjs(session.sessionDate).isBefore(today, 'day')
+        );
+        
+        const stats: AttendanceStats = {
+          totalSessions: pastSessions.length,
+          presentCount: 0,
+          absentCount: 0,
+          lateCount: 0,
+          attendanceRate: 0
+        };
+        
+        setAttendanceStats(stats);
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -144,35 +171,124 @@ const StudentDashboard = () => {
 
   const dateCellRender = (value: Dayjs) => {
     const dailySessions = getSessionsForDate(value);
+    
+    if (dailySessions.length === 0) return null;
+
     return (
-      <div style={{ fontSize: '11px', minHeight: '60px', padding: '2px' }}>
-        {dailySessions.slice(0, 2).map((session, index) => (
-          <div key={index} style={{ 
-            background: 'linear-gradient(135deg, #1890ff, #096dd9)', 
-            color: 'white', 
-            padding: '3px 6px', 
-            borderRadius: '6px', 
-            marginBottom: '2px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: '10px',
-            fontWeight: '500',
-            boxShadow: '0 2px 4px rgba(24, 144, 255, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
-          }}>
-            {session.classInfo?.name || 'Lớp học'}
-          </div>
-        ))}
+      <div style={{ 
+        padding: '1px', 
+        minHeight: '50px',
+        maxHeight: '80px',
+        overflow: 'hidden',
+        fontSize: '10px'
+      }}>
+        {dailySessions.slice(0, 2).map((session, index) => {
+          const classInfo = session.classInfo;
+          
+          // Lấy thông tin môn học
+          let subjectName = 'Môn học';
+          if (classInfo?.subjectId) {
+            subjectName = classInfo.subjectId.name || 'Môn học';
+          }
+          
+          // Lấy thông tin ca học (shift)
+          const shift = classInfo?.shift || '';
+          
+          // Lấy thời gian từ ca học sử dụng convertShiftToTime
+          const sessionTime = shift ? convertShiftToTime(shift) : dayjs(session.sessionDate).format('HH:mm');
+          
+          // Màu sắc theo ca học
+          const getCalendarShiftColor = (shift: string) => {
+            switch(shift) {
+              case '1': 
+              case '2': return '#52c41a'; // Ca sáng - xanh lá
+              case '3': 
+              case '4': 
+              case '5': return '#1890ff'; // Ca chiều - xanh dương  
+              case '6': return '#722ed1'; // Ca tối - tím
+              default: return '#fa8c16'; // Mặc định - cam
+            }
+          };
+          
+          return (
+            <div 
+              key={index} 
+              style={{ 
+                marginBottom: '2px',
+                background: `linear-gradient(135deg, ${getCalendarShiftColor(shift)}15, ${getCalendarShiftColor(shift)}05)`,
+                border: `1px solid ${getCalendarShiftColor(shift)}40`,
+                borderRadius: '4px',
+                padding: '2px 4px',
+                fontSize: '9px',
+                lineHeight: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                maxWidth: '100%'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.01)';
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+              }}
+            >
+              <div style={{ 
+                fontWeight: 'bold', 
+                color: getCalendarShiftColor(shift),
+                marginBottom: '1px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '8px'
+              }}>
+                <span>{shift && `Ca ${shift}`}</span>
+                <span style={{ fontSize: '7px', opacity: 0.8 }}>
+                  {sessionTime.split(' - ')[0]}
+                </span>
+              </div>
+              <div style={{ 
+                color: '#666',
+                fontWeight: '500',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: '8px',
+                lineHeight: '9px'
+              }}>
+                {subjectName}
+              </div>
+              {classInfo?.room && (
+                <div style={{ 
+                  color: '#999',
+                  fontSize: '7px',
+                  marginTop: '1px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  lineHeight: '8px'
+                }}>
+                  📍 {Array.isArray(classInfo.room) ? classInfo.room[0] : classInfo.room}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {dailySessions.length > 2 && (
           <div style={{ 
-            fontSize: '9px', 
-            color: '#1890ff', 
-            fontWeight: '600',
             textAlign: 'center',
-            marginTop: '2px'
+            fontSize: '7px', 
+            color: '#999',
+            marginTop: '1px',
+            padding: '1px 2px',
+            background: '#f5f5f5',
+            borderRadius: '3px',
+            border: '1px dashed #d9d9d9',
+            lineHeight: '8px'
           }}>
-            +{dailySessions.length - 2} buổi
+            +{dailySessions.length - 2}
           </div>
         )}
       </div>
@@ -621,61 +737,112 @@ const StudentDashboard = () => {
             }}
             bodyStyle={{ padding: '24px' }}
           >
-            <Calendar
-              value={selectedDate}
-              onSelect={setSelectedDate}
-              dateCellRender={dateCellRender}
-              fullscreen={false}
-              style={{
-                background: 'transparent',
-                border: 'none'
-              }}
-              headerRender={({ value, onChange }) => (
-                <div style={{ 
-                  padding: '16px', 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-                  borderRadius: '12px',
-                  marginBottom: '16px',
-                  color: 'white'
-                }}>
-                  <Title level={4} style={{ margin: 0, color: 'white' }}>
-                    {value.format('MMMM YYYY')}
-                  </Title>
-                  <Space>
-                    <Button 
-                      type="primary" 
-                      ghost 
-                      size="small"
-                      onClick={() => onChange(value.subtract(1, 'month'))}
-                      style={{ borderColor: 'white', color: 'white', borderRadius: '8px' }}
-                    >
-                      ‹
-                    </Button>
-                    <Button 
-                      type="primary" 
-                      ghost 
-                      size="small"
-                      onClick={() => onChange(dayjs())}
-                      style={{ borderColor: 'white', color: 'white', borderRadius: '8px' }}
-                    >
-                      Hôm nay
-                    </Button>
-                    <Button 
-                      type="primary" 
-                      ghost 
-                      size="small"
-                      onClick={() => onChange(value.add(1, 'month'))}
-                      style={{ borderColor: 'white', color: 'white', borderRadius: '8px' }}
-                    >
-                      ›
-                    </Button>
-                  </Space>
+            <div style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              borderRadius: '16px',
+              padding: '20px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+              border: '1px solid #e8f0fe'
+            }}>
+              {/* Legend */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '16px',
+                marginBottom: '16px',
+                padding: '12px',
+                background: '#f8fafc',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '3px',
+                    background: 'linear-gradient(135deg, #52c41a15, #52c41a05)',
+                    border: '1px solid #52c41a40'
+                  }}></div>
+                  <Text style={{ fontSize: '12px', color: '#52c41a', fontWeight: '500' }}>Ca Sáng (1-2)</Text>
                 </div>
-              )}
-            />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '3px',
+                    background: 'linear-gradient(135deg, #1890ff15, #1890ff05)',
+                    border: '1px solid #1890ff40'
+                  }}></div>
+                  <Text style={{ fontSize: '12px', color: '#1890ff', fontWeight: '500' }}>Ca Chiều (3-5)</Text>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '3px',
+                    background: 'linear-gradient(135deg, #722ed115, #722ed105)',
+                    border: '1px solid #722ed140'
+                  }}></div>
+                  <Text style={{ fontSize: '12px', color: '#722ed1', fontWeight: '500' }}>Ca Tối (6)</Text>
+                </div>
+              </div>
+              
+              <Calendar
+                value={selectedDate}
+                onSelect={setSelectedDate}
+                dateCellRender={dateCellRender}
+                fullscreen={false}
+                style={{
+                  background: 'transparent',
+                  border: 'none'
+                }}
+                headerRender={({ value, onChange }) => (
+                  <div style={{ 
+                    padding: '16px', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: '12px',
+                    marginBottom: '16px',
+                    color: 'white'
+                  }}>
+                    <Title level={4} style={{ margin: 0, color: 'white' }}>
+                      {value.format('MMMM YYYY')}
+                    </Title>
+                    <Space>
+                      <Button 
+                        type="primary" 
+                        ghost 
+                        size="small"
+                        onClick={() => onChange(value.subtract(1, 'month'))}
+                        style={{ borderColor: 'white', color: 'white', borderRadius: '8px' }}
+                      >
+                        ‹
+                      </Button>
+                      <Button 
+                        type="primary" 
+                        ghost 
+                        size="small"
+                        onClick={() => onChange(dayjs())}
+                        style={{ borderColor: 'white', color: 'white', borderRadius: '8px' }}
+                      >
+                        Hôm nay
+                      </Button>
+                      <Button 
+                        type="primary" 
+                        ghost 
+                        size="small"
+                        onClick={() => onChange(value.add(1, 'month'))}
+                        style={{ borderColor: 'white', color: 'white', borderRadius: '8px' }}
+                      >
+                        ›
+                      </Button>
+                    </Space>
+                  </div>
+                )}
+              />
+            </div>
           </Card>
         </Col>
 

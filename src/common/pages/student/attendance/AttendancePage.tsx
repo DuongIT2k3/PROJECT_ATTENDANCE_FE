@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Table, 
@@ -46,143 +46,20 @@ const AttendancePage = () => {
   const [filteredData, setFilteredData] = useState<IAttendanceHistory[]>([]);
   const [classes, setClasses] = useState<IClass[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [attendanceData, selectedClass, selectedStatus, dateRange]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch classes
-      const classResponse = await getAllClasses();
-      setClasses(classResponse.data || []);
-
-      // Fetch attendance history
-      const filters: IAttendanceHistoryFilter = {
-        // studentId: currentUser.id, // Should get from auth context
-        limit: 100
-      };
-      
-      try {
-        const attendanceResponse = await getAttendanceHistory(filters);
-        if (attendanceResponse.data && attendanceResponse.data.length > 0) {
-          setAttendanceData(attendanceResponse.data);
-        } else {
-          // If no real data, generate mock data
-          const mockData: IAttendanceHistory[] = generateMockAttendanceData();
-          setAttendanceData(mockData);
-        }
-      } catch (error) {
-        console.error('Error fetching attendance data:', error);
-        // Generate mock data for demo
-        const mockData: IAttendanceHistory[] = generateMockAttendanceData();
-        setAttendanceData(mockData);
-      }
-    } catch (error) {
-      console.error('Error in fetchData:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Generate mock data for demonstration
-  const generateMockAttendanceData = (): IAttendanceHistory[] => {
-    const mockData: IAttendanceHistory[] = [];
-    const startDate = dayjs().subtract(3, 'month');
-    
-    const mockClasses = [
-      {
-        _id: 'class_1',
-        name: 'CNTT01 - Công nghệ thông tin',
-        subjectId: {
-          _id: 'subject_1',
-          name: 'Lập trình Web nâng cao',
-          code: 'LTW301'
-        },
-        teacherId: {
-          _id: 'teacher_1',
-          fullname: 'TS. Nguyễn Văn Minh'
-        }
-      },
-      {
-        _id: 'class_2',
-        name: 'KTPM02 - Kỹ thuật phần mềm',
-        subjectId: {
-          _id: 'subject_2',
-          name: 'Cơ sở dữ liệu phân tán',
-          code: 'CSDL302'
-        },
-        teacherId: {
-          _id: 'teacher_2',
-          fullname: 'ThS. Trần Thị Hương'
-        }
-      },
-      {
-        _id: 'class_3',
-        name: 'KHMT03 - Khoa học máy tính',
-        subjectId: {
-          _id: 'subject_3',
-          name: 'Mạng máy tính nâng cao',
-          code: 'MMT401'
-        },
-        teacherId: {
-          _id: 'teacher_3',
-          fullname: 'PGS.TS. Lê Văn Tuấn'
-        }
-      }
-    ];
-    
-    for (let i = 0; i < 60; i++) {
-      const sessionDate = startDate.add(i * 1, 'day');
-      if (sessionDate.isAfter(dayjs())) break;
-      
-      // Skip weekends
-      if (sessionDate.day() === 0 || sessionDate.day() === 6) continue;
-      
-      const classInfo = mockClasses[i % 3];
-      
-      mockData.push({
-        _id: `attendance_${i}`,
-        sessionId: {
-          _id: `session_${i}`,
-          sessionDate: sessionDate.toISOString(),
-          classId: classInfo
-        },
-        studentId: {
-          _id: 'current_student',
-          fullname: 'Nguyễn Văn An',
-          studentId: 'SV2023001'
-        },
-        status: Math.random() > 0.8 ? StatusEnum.ABSENT : 
-                Math.random() > 0.9 ? StatusEnum.LATE : StatusEnum.PRESENT,
-        note: i % 7 === 0 ? 'Có phép do ốm' : undefined,
-        createdAt: sessionDate.toISOString(),
-        updatedAt: sessionDate.toISOString()
-      });
-    }
-    
-    return mockData.sort((a, b) => 
-      dayjs(b.sessionId?.sessionDate || 0).valueOf() - dayjs(a.sessionId?.sessionDate || 0).valueOf()
-    );
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...attendanceData];
 
     // Filter by class
     if (selectedClass !== 'all') {
-      filtered = filtered.filter(record => 
-        record.sessionId?.classId?._id === selectedClass
-      );
+      filtered = filtered.filter(record => {
+        const classData = record.sessionId?.classId;
+        return typeof classData === 'object' ? classData?._id === selectedClass : classData === selectedClass;
+      });
     }
 
     // Filter by status
@@ -199,6 +76,50 @@ const AttendancePage = () => {
     }
 
     setFilteredData(filtered);
+  }, [attendanceData, selectedClass, selectedStatus, dateRange]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch classes first
+      const classResponse = await getAllClasses();
+      const classData = classResponse.data || [];
+      setClasses(classData);
+
+      // Fetch attendance history từ database
+      const filters: IAttendanceHistoryFilter = {
+        // studentId sẽ tự động được filter ở backend dựa trên user authentication
+        limit: 1000,
+        sort: 'sessionDate',
+        order: 'desc'
+      };
+      
+      const attendanceResponse = await getAttendanceHistory(filters);
+
+      if (attendanceResponse?.data && Array.isArray(attendanceResponse.data)) {
+        setAttendanceData(attendanceResponse.data);
+      } else {
+        console.warn('No attendance data returned from API');
+        setAttendanceData([]);
+      }
+
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+      setError('Không thể tải dữ liệu điểm danh. Vui lòng thử lại sau.');
+      setAttendanceData([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: StatusEnum) => {
@@ -254,28 +175,118 @@ const AttendancePage = () => {
     {
       title: 'Lớp học',
       key: 'class',
-      render: (record: IAttendanceHistory) => (
-        <Space direction="vertical" size={0}>
-          <Text strong>{record.sessionId.classId?.name || 'Chưa có tên lớp'}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            <BookOutlined style={{ marginRight: 4 }} />
-            {record.sessionId.classId?.subjectId?.name || 'Chưa có môn học'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            Mã: {record.sessionId.classId?.subjectId?.code || 'N/A'}
-          </Text>
-        </Space>
-      ),
+      width: 280,
+      render: (record: IAttendanceHistory) => {
+        const classData = record.sessionId?.classId;
+        
+        // Tìm thông tin class từ classes array nếu cần
+        let displayClassName = 'Chưa có tên lớp';
+        let displaySubjectName = 'Chưa có môn học';
+        let displaySubjectCode = 'N/A';
+        
+        if (typeof classData === 'string') {
+          const foundClass = classes.find(c => c._id === classData);
+          if (foundClass) {
+            displayClassName = foundClass.name;
+            displaySubjectName = foundClass.subjectId?.name || 'Chưa có môn học';
+            displaySubjectCode = foundClass.subjectId?._id?.substring(0, 8) || 'N/A';
+          }
+        } else if (classData) {
+          displayClassName = classData.name;
+          displaySubjectName = classData.subjectId?.name || 'Chưa có môn học';
+          displaySubjectCode = classData.subjectId?._id?.substring(0, 8) || 'N/A';
+        }
+        
+        return (
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+              {displayClassName}
+            </Text>
+            <Space style={{ width: '100%' }}>
+              <BookOutlined style={{ color: '#52c41a', fontSize: '12px' }} />
+              <Text style={{ fontSize: '13px', color: '#262626' }}>
+                {displaySubjectName}
+              </Text>
+            </Space>
+            <Text type="secondary" style={{ fontSize: '11px' }}>
+              Mã môn: {displaySubjectCode}
+            </Text>
+          </Space>
+        );
+      },
+      filters: [
+        ...Array.from(new Set(filteredData.map(record => {
+          const classData = record.sessionId?.classId;
+          if (typeof classData === 'string') {
+            const foundClass = classes.find(c => c._id === classData);
+            return foundClass?.name;
+          }
+          return classData?.name;
+        })))
+          .filter(Boolean)
+          .map(className => ({
+            text: className!,
+            value: className!
+          }))
+      ],
+      onFilter: (value: boolean | React.Key, record: IAttendanceHistory) => {
+        const classData = record.sessionId?.classId;
+        if (typeof classData === 'string') {
+          const foundClass = classes.find(c => c._id === classData);
+          return foundClass?.name === value;
+        }
+        return classData?.name === value;
+      },
     },
     {
       title: 'Giảng viên',
       key: 'teacher',
-      render: (record: IAttendanceHistory) => (
-        <Space>
-          <UserOutlined style={{ color: '#1890ff' }} />
-          <Text>{record.sessionId.classId.teacherId?.fullname || 'Chưa có giảng viên'}</Text>
-        </Space>
-      ),
+      width: 200,
+      render: (record: IAttendanceHistory) => {
+        const classData = record.sessionId?.classId;
+        
+        // Tìm thông tin teacher từ classes array nếu cần
+        let displayTeacherName = 'Chưa có giảng viên';
+        
+        if (typeof classData === 'string') {
+          const foundClass = classes.find(c => c._id === classData);
+          if (foundClass) {
+            displayTeacherName = foundClass.teacherId?.fullname || 'Chưa có giảng viên';
+          }
+        } else if (classData) {
+          displayTeacherName = classData.teacherId?.fullname || 'Chưa có giảng viên';
+        }
+        
+        return (
+          <Space direction="vertical" size={2} style={{ width: '100%' }}>
+            <Space>
+              <UserOutlined style={{ color: '#722ed1', fontSize: '12px' }} />
+              <Text style={{ fontSize: '13px', fontWeight: '500' }}>
+                {displayTeacherName}
+              </Text>
+            </Space>
+            <Text type="secondary" style={{ fontSize: '11px' }}>
+              Giảng viên bộ môn
+            </Text>
+          </Space>
+        );
+      },
+      filters: [
+        ...Array.from(new Set(filteredData.map(record => {
+          const teacherData = record.sessionId?.classId?.teacherId;
+          return typeof teacherData === 'object' ? teacherData?.fullname : teacherData;
+        })))
+          .filter(Boolean)
+          .map(teacherName => ({
+            text: teacherName,
+            value: teacherName
+          }))
+      ],
+      onFilter: (value: boolean | React.Key, record: IAttendanceHistory) => {
+        const teacherData = record.sessionId?.classId?.teacherId;
+        const teacherName = typeof teacherData === 'object' ? teacherData?.fullname : teacherData;
+        return teacherName === value;
+      },
     },
     {
       title: 'Trạng thái',
@@ -328,6 +339,24 @@ const AttendancePage = () => {
         </Title>
         <Text type="secondary">Theo dõi và quản lý lịch sử điểm danh của bạn</Text>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert
+          message="Lỗi tải dữ liệu"
+          description={error}
+          type="error"
+          showIcon
+          closable
+          onClose={() => setError(null)}
+          action={
+            <Button size="small" onClick={fetchData}>
+              Thử lại
+            </Button>
+          }
+          style={{ marginBottom: 24 }}
+        />
+      )}
 
       {/* Alert for attendance rate */}
       {attendanceRate < 80 && totalSessions > 0 && (
@@ -461,24 +490,55 @@ const AttendancePage = () => {
       </Card>
 
       {/* Data Table */}
-      <Card>
-        {filteredData.length === 0 ? (
+      <Card title="Lịch sử điểm danh">
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16 }}>Đang tải dữ liệu từ database...</div>
+          </div>
+        ) : filteredData.length === 0 ? (
           <Empty
-            description="Không có dữ liệu điểm danh"
+            description={
+              attendanceData.length === 0 ? (
+                <div>
+                  <div style={{ marginBottom: 8 }}>Chưa có dữ liệu điểm danh nào</div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    Dữ liệu sẽ được cập nhật khi giảng viên thực hiện điểm danh
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ marginBottom: 8 }}>Không tìm thấy dữ liệu phù hợp với bộ lọc</div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    Hãy thử điều chỉnh bộ lọc hoặc xóa bộ lọc
+                  </div>
+                </div>
+              )
+            }
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
+            style={{ padding: '40px 20px' }}
+          >
+            {attendanceData.length > 0 && filteredData.length === 0 && (
+              <Button onClick={clearFilters} type="primary">
+                Xóa bộ lọc
+              </Button>
+            )}
+          </Empty>
         ) : (
           <Table
             columns={columns}
             dataSource={filteredData}
-            rowKey="_id"
+            rowKey={(record) => `${record._id}_${record.sessionId?._id || 'unknown'}`}
             pagination={{
-              pageSize: 10,
+              pageSize: 15,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} bản ghi`,
+              pageSizeOptions: ['10', '15', '25', '50'],
             }}
-            scroll={{ x: 800 }}
+            scroll={{ x: 1000 }}
+            size="middle"
+            bordered
           />
         )}
       </Card>

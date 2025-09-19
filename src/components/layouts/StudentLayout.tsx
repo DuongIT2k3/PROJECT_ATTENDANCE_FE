@@ -10,9 +10,9 @@ import SiderMenu from "../common/SideBarMenu";
 
 const studentMenu = [
 	{
-		key: "/student",
+		key: "/student/dashboard",
 		icon: <DashboardOutlined />,
-		label: <Link to="/student">Dashboard</Link>,
+		label: <Link to="/student/dashboard">Dashboard</Link>,
 	},
 	{
 		key: "/student/classes",
@@ -38,7 +38,8 @@ const studentMenu = [
 
 const getBreadcrumb = (pathname: string) => {
 	const map: Record<string, string> = {
-		"/student": "Dashboard",
+		"/student": "Lớp học của tôi", // Mặc định
+		"/student/dashboard": "Dashboard",
 		"/student/classes": "Lớp học của tôi",
 		"/student/schedule": "Lịch học",
 		"/student/attendance": "Lịch sử điểm danh",
@@ -46,7 +47,7 @@ const getBreadcrumb = (pathname: string) => {
 	};
 	const paths = pathname.split("/").filter(Boolean);
 	const crumbs = [
-		{ path: "/student", label: "Dashboard" },
+		{ path: "/student", label: "Sinh viên" },
 		...(paths[1]
 			? [
 					{
