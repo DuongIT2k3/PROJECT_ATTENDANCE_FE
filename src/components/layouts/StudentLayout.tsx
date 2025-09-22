@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import HeaderBar from "../common/HeaderBar";
 import ContentWrapper from "../common/ContentWrapper";
-import { CalendarOutlined, CheckCircleOutlined, DashboardOutlined, BookOutlined, HistoryOutlined } from "@ant-design/icons";
+import { CalendarOutlined, CheckCircleOutlined, DashboardOutlined, BookOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import BreadcrumbNav from "../common/BreadcrumNav";
 import SiderMenu from "../common/SideBarMenu";
@@ -29,11 +29,6 @@ const studentMenu = [
 		icon: <CheckCircleOutlined />,
 		label: <Link to="/student/attendance">Lịch sử điểm danh</Link>,
 	},
-	{
-		key: "/student/study-history",
-		icon: <HistoryOutlined />,
-		label: <Link to="/student/study-history">Lịch sử học tập</Link>,
-	},
 ];
 
 const getBreadcrumb = (pathname: string) => {
@@ -43,7 +38,6 @@ const getBreadcrumb = (pathname: string) => {
 		"/student/classes": "Lớp học của tôi",
 		"/student/schedule": "Lịch học",
 		"/student/attendance": "Lịch sử điểm danh",
-		"/student/study-history": "Lịch sử học tập",
 	};
 	const paths = pathname.split("/").filter(Boolean);
 	const crumbs = [
