@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Form, Input, message, Modal, Select, Button } from 'antd'
+import { Form, Input, message, Modal, Select } from 'antd'
 import { cloneElement, isValidElement, ReactElement, ReactNode, useState } from 'react'
 import User from '../../../types/User';
 import { Major }  from '../../../types/Major';
@@ -7,7 +7,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createUser, updateUserRole } from '../../../services/userServices';
 import { getAllMajors } from '../../../services/majorServices';
 import { InfiniteSelect } from '../../../../components/common/InfiniteSelect';
-import { CopyOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 
@@ -23,60 +22,8 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
 
   const createMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: (data) => {
-      // Hiển thị mật khẩu cho admin
-      if (data.plainPassword) {
-        const copyPassword = () => {
-          navigator.clipboard.writeText(data.plainPassword!);
-          message.success('Đã copy mật khẩu!');
-        };
-
-        Modal.success({
-          title: "Tạo người dùng thành công!",
-          content: (
-            <div>
-              <p><strong>Tên người dùng:</strong> {data.username}</p>
-              <p><strong>Email:</strong> {data.email}</p>
-              <div style={{ 
-                backgroundColor: '#fff2f0', 
-                border: '1px solid #ffccc7',
-                borderRadius: '4px',
-                padding: '12px',
-                margin: '8px 0'
-              }}>
-                <p style={{ margin: 0, color: '#ff4d4f' }}>
-                  <strong>Mật khẩu tạm thời:</strong> 
-                  <code style={{ 
-                    backgroundColor: '#f5f5f5', 
-                    padding: '2px 6px',
-                    margin: '0 8px',
-                    borderRadius: '3px',
-                    fontSize: '14px'
-                  }}>
-                    {data.plainPassword}
-                  </code>
-                  <Button 
-                    type="link" 
-                    size="small" 
-                    icon={<CopyOutlined />}
-                    onClick={copyPassword}
-                    style={{ padding: 0 }}
-                  >
-                    Copy
-                  </Button>
-                </p>
-              </div>
-              <p style={{ fontSize: '12px', color: '#666', marginBottom: 0 }}>
-                <strong>⚠️ Lưu ý:</strong> Vui lòng lưu mật khẩu này và thông báo cho người dùng. 
-                Người dùng nên đổi mật khẩu sau lần đăng nhập đầu tiên.
-              </p>
-            </div>
-          ),
-          width: 600,
-        });
-      } else {
-        message.success("Thêm người dùng thành công");
-      }
+    onSuccess: () => {
+      message.success("Thêm người dùng thành công! Thông tin đăng nhập đã được gửi qua email.");
       queryClient.invalidateQueries({queryKey: ["users"]});
       setOpen(false);
       form.resetFields();
@@ -88,12 +35,12 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
   const updateRoleMutation = useMutation({
     mutationFn: ({id, payload} : {id: string; payload: Partial<User> }) => updateUserRole(id, payload),
     onSuccess: () => {
-      message.success("Cập nhật vai trò thành công");
+      message.success("Cập nhật thành công");
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setOpen(false);
     },
     onError: () => {
-      message.error("Cập nhật vai trò thất bại");
+      message.error("Cập nhật thất bại");
     }
   });
   const handleOk = () => {
@@ -107,7 +54,11 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
   }
   const handleEdit = (user: User) => {
     setOpen(true);
-    form.setFieldsValue({ role: user.role });
+    form.setFieldsValue({ 
+      role: user.role,
+      majorId: typeof user.majorId === 'object' && user.majorId?._id ? user.majorId._id : user.majorId,
+      phone: user.phone 
+    });
   };
   const handleAdd = () => {
     setOpen(true);
@@ -122,7 +73,7 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
           })
         : children}
       <Modal 
-       title={userEdit ? "Cập nhật vai trò" : "Thêm người dùng"}
+       title={userEdit ? "Cập nhật" : "Thêm người dùng"}
        open={open}
        onOk={handleOk}
        onCancel={() => setOpen(false)}
@@ -136,14 +87,13 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
                  <Select placeholder="Chọn vai trò của người dùng">
                   <Option value="teacher">Giảng viên</Option>
                   <Option value="student">Học sinh</Option>
-                  <Option value="superAdmin">Quản trị viên</Option>
                  </Select>
               </Form.Item>
-              {selectedRole === "student" && !userEdit && (
+              {(selectedRole === "student" || selectedRole === "teacher") && (
                 <Form.Item
                   label="Chuyên ngành"
                   name="majorId"
-                  rules={[{required: true, message: "Vui lòng chọn chuyên ngành"},]}
+                  rules={[{required: selectedRole === "student", message: "Vui lòng chọn chuyên ngành"},]}
                 >
                   <InfiniteSelect<Major>
                       labelDataIndex="name"
@@ -154,7 +104,16 @@ const UserForm = ({ children, userEdit} : UserFormProps) => {
                       fetchFn={(params) => getAllMajors({isDeleted: false, ...params})}
                     />  
                 </Form.Item>
-              ) }
+              )}
+              {(selectedRole === "student" || selectedRole === "teacher") && userEdit && (
+                <Form.Item
+                  label="Số điện thoại"
+                  name="phone"
+                  rules={[{ required: false, message: "Vui lòng nhập số điện thoại" }]}
+                >
+                  <Input placeholder='VD:012345678' />
+                </Form.Item>
+              )}
               {!userEdit && (
                 <>
                   <Form.Item
