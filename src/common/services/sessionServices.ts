@@ -10,6 +10,21 @@ export const getAllSessionsByClassId = async (
   return res.data;
 };
 
+export const getAllSessionsByClassIdWithoutAttendance = async (
+  classId: string,
+  params?: Params
+): Promise<IResponse<ISession[]>> => {
+  const res = await apiClient.get(`/sessions/classid/${classId}/without-attendance`, { params });
+  return res.data;
+};
+
+export const getMySessions = async (
+  params?: Params
+): Promise<IResponse<ISession[]>> => {
+  const res = await apiClient.get("/sessions/student/my-sessions", { params });
+  return res.data;
+};
+
 
 export const getTeachingSchedule = async (
   filters?: ITeachingScheduleFilter

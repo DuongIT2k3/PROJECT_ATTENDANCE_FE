@@ -26,7 +26,7 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import { getAllClasses, getDetailClass } from "../../../services/classServices";
-import { getAllSessionsByClassId } from "../../../services/sessionServices";
+import { getAllSessionsByClassIdWithoutAttendance } from "../../../services/sessionServices";
 import {
   checkAttendanceStatus,
   updateAttendance,
@@ -70,7 +70,7 @@ const ManagerAttendancePage = () => {
   const { data: sessionsData, isLoading: loadingSessions } = useQuery({
     queryKey: ["sessions", selectedClassId],
     queryFn: () =>
-      getAllSessionsByClassId(selectedClassId!, { isDeleted: false }),
+      getAllSessionsByClassIdWithoutAttendance(selectedClassId!, { isDeleted: false }),
     enabled: !!selectedClassId,
   });
 
@@ -95,12 +95,15 @@ const ManagerAttendancePage = () => {
       setHasChanges(false);
       setIsAttendanceCompleted(true);
       
-      // Invalidate queries
+      // Invalidate queries để refresh danh sách sessions (sẽ tự động ẩn session này)
       queryClient.invalidateQueries({
         queryKey: ["attendance", selectedSessionId],
       });
       queryClient.invalidateQueries({
         queryKey: ["attendance-history"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["sessions", selectedClassId],
       });
       
       // Refetch để cập nhật UI
@@ -120,12 +123,15 @@ const ManagerAttendancePage = () => {
       setHasChanges(false);
       setIsAttendanceCompleted(true);
       
-      // Invalidate queries
+      // Invalidate queries để refresh danh sách sessions (sẽ tự động ẩn session này)
       queryClient.invalidateQueries({
         queryKey: ["attendance", selectedSessionId],
       });
       queryClient.invalidateQueries({
         queryKey: ["attendance-history"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["sessions", selectedClassId],
       });
       
       // Refetch để cập nhật UI
@@ -417,7 +423,11 @@ const ManagerAttendancePage = () => {
             <Text strong>Buổi học:</Text>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <Select
-                placeholder="Chọn buổi học"
+                placeholder={
+                  sessionsData?.data?.length === 0 
+                    ? "Không có buổi học chưa điểm danh" 
+                    : "Chọn buổi học"
+                }
                 value={selectedSessionId}
                 onChange={setSelectedSessionId}
                 style={{ flex: 1 }}
@@ -425,6 +435,7 @@ const ManagerAttendancePage = () => {
                 disabled={!selectedClassId}
                 showSearch
                 optionFilterProp="children"
+                notFoundContent="Tất cả buổi học đã được điểm danh"
               >
                 {sessionsData?.data?.map((session: ISession) => (
                   <Option key={session._id} value={session._id}>
@@ -478,13 +489,13 @@ const ManagerAttendancePage = () => {
                     style={{
                       marginBottom: 16,
                       padding: 12,
-                      background: "#e6f7ff",
-                      border: "1px solid #91d5ff",
+                      background: "#fff2e8",
+                      border: "1px solid #ffbb96",
                       borderRadius: 4,
                     }}
                   >
-                    <Text style={{ color: "#1890ff" }}>
-                      ✅ Buổi học này đã được điểm danh. Bạn có thể xem hoặc chỉnh sửa điểm danh.
+                    <Text style={{ color: "#d4380d" }}>
+                      ⚠️ Buổi học này đã được điểm danh và sẽ bị ẩn khỏi danh sách sau khi bạn thoát khỏi trang này.
                     </Text>
                   </div>
                 )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Card, 
   Table, 
@@ -25,12 +26,13 @@ import {
   BookOutlined,
   UserOutlined,
   TrophyOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  ArrowLeftOutlined
 } from '@ant-design/icons';
 import { IAttendanceHistory, IAttendanceHistoryFilter } from '../../../types/Attendance';
 import { IClass } from '../../../types/Classes';
 import { getAttendanceHistory } from '../../../services/attendanceServices';
-import { getAllClasses } from '../../../services/classServices';
+import { getMyClasses } from '../../../services/classServices';
 import { StatusEnum } from '../../../types';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
@@ -42,6 +44,8 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const AttendancePage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [attendanceData, setAttendanceData] = useState<IAttendanceHistory[]>([]);
   const [filteredData, setFilteredData] = useState<IAttendanceHistory[]>([]);
   const [classes, setClasses] = useState<IClass[]>([]);
@@ -80,7 +84,13 @@ const AttendancePage = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    
+    // Đọc classId từ URL params nếu có
+    const classIdFromUrl = searchParams.get('classId');
+    if (classIdFromUrl) {
+      setSelectedClass(classIdFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     applyFilters();
@@ -92,7 +102,7 @@ const AttendancePage = () => {
       setError(null);
       
       // Fetch classes first
-      const classResponse = await getAllClasses();
+      const classResponse = await getMyClasses();
       const classData = classResponse.data || [];
       setClasses(classData);
 
@@ -320,7 +330,17 @@ const AttendancePage = () => {
     setSelectedClass('all');
     setSelectedStatus('all');
     setDateRange(null);
+    // Clear URL params
+    setSearchParams({});
   };
+
+  const handleBackToClasses = () => {
+    navigate('/student/classes');
+  };
+
+  // Tìm thông tin class đang được filter
+  const currentClass = selectedClass !== 'all' ? classes.find(c => c._id === selectedClass) : null;
+  const classIdFromUrl = searchParams.get('classId');
 
   if (loading) {
     return (
@@ -334,10 +354,28 @@ const AttendancePage = () => {
   return (
     <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
       <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ color: '#1890ff', marginBottom: 8 }}>
-          <CalendarOutlined /> Lịch sử điểm danh
-        </Title>
-        <Text type="secondary">Theo dõi và quản lý lịch sử điểm danh của bạn</Text>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+          {classIdFromUrl && (
+            <Button 
+              type="text" 
+              icon={<ArrowLeftOutlined />}
+              onClick={handleBackToClasses}
+              style={{ marginRight: 16 }}
+            >
+              Quay lại danh sách lớp
+            </Button>
+          )}
+          <Title level={2} style={{ color: '#1890ff', margin: 0 }}>
+            <CalendarOutlined /> 
+            {currentClass ? `Lịch sử điểm danh - ${currentClass.name}` : 'Lịch sử điểm danh'}
+          </Title>
+        </div>
+        <Text type="secondary">
+          {currentClass 
+            ? `Môn học: ${currentClass.subjectId?.name || 'N/A'} | Giảng viên: ${currentClass.teacherId?.fullname || 'N/A'}`
+            : 'Theo dõi và quản lý lịch sử điểm danh của bạn'
+          }
+        </Text>
       </div>
 
       {/* Error Alert */}

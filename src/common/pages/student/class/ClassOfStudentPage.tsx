@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Card, Row, Col, Typography, Tag, Empty, Spin, Space, Divider, Badge } from 'antd';
-import { BookOutlined, UserOutlined, CalendarOutlined, ClockCircleOutlined, TeamOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Tag, Empty, Spin, Space, Divider, Badge, Button } from 'antd';
+import { BookOutlined, UserOutlined, CalendarOutlined, ClockCircleOutlined, TeamOutlined, EnvironmentOutlined, HistoryOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { IClass } from '../../../types/Classes';
-import { getAllClasses } from '../../../services/classServices';
+import { getMyClasses } from '../../../services/classServices';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
 const ClassOfStudentPage = () => {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<IClass[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,14 +20,19 @@ const ClassOfStudentPage = () => {
   const fetchStudentClasses = async () => {
     try {
       setLoading(true);
-      // Giả sử API sẽ filter theo studentId hiện tại
-      const response = await getAllClasses();
+      // Gọi API chỉ lấy lớp của sinh viên hiện tại
+      const response = await getMyClasses();
       setClasses(response.data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewAttendanceHistory = (classItem: IClass) => {
+    // Navigate to attendance page với classId param
+    navigate(`/student/attendance?classId=${classItem._id}`);
   };
 
   const getShiftColor = (shift: string) => {
@@ -142,7 +149,7 @@ const ClassOfStudentPage = () => {
                   <Space>
                     <EnvironmentOutlined style={{ color: '#f5222d' }} />
                     <Text style={{ fontSize: 13 }}>
-                      {classItem.room?.join(', ') || 'Chưa xác định phòng'}
+                      {classItem.room || 'Chưa xác định phòng'}
                     </Text>
                   </Space>
 
@@ -163,6 +170,18 @@ const ClassOfStudentPage = () => {
                   <Text style={{ fontSize: 11, color: '#8c8c8c' }}>
                     Bắt đầu: {dayjs(classItem.startDate).format('DD/MM/YYYY')}
                   </Text>
+
+                  <div style={{ marginTop: 12, textAlign: 'center' }}>
+                    <Button 
+                      type="primary" 
+                      size="small" 
+                      icon={<HistoryOutlined />}
+                      onClick={() => handleViewAttendanceHistory(classItem)}
+                      style={{ width: '100%' }}
+                    >
+                      Xem lịch sử điểm danh
+                    </Button>
+                  </div>
                 </Space>
               </Card>
             </Col>

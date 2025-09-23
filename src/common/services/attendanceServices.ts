@@ -21,6 +21,19 @@ export const getAttendanceHistory = async (
   return res.data.data;
 };
 
+export const getStudentAttendanceByClass = async (
+  classId: string,
+  params?: Partial<IAttendanceHistoryFilter>
+): Promise<IResponse<IAttendance[]>> => {
+  const res = await apiClient.get("/attendances", { 
+    params: { 
+      classId,
+      ...params 
+    } 
+  });
+  return res.data;
+};
+
 export const createAttendance = async (body: {
   sessionId: string;
   attendances: Omit<

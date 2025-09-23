@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Calendar, Card, List, Typography, Tag, Space, Button, Select, Empty, Spin, Badge, Statistic, Row, Col, Modal } from 'antd';
 import { CalendarOutlined, ClockCircleOutlined, BookOutlined, UserOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
 import { ISession } from '../../../types/Session';
-import { getAllSessionsByClassId } from '../../../services/sessionServices';
-import { getAllClasses } from '../../../services/classServices';
+import { getMySessions } from '../../../services/sessionServices';
+import { getMyClasses } from '../../../services/classServices';
 import { IClass } from '../../../types/Classes';
 import { convertShiftToTime } from '../../../utils/convertShift';
 import dayjs, { Dayjs } from 'dayjs';
@@ -32,27 +32,29 @@ const SchedulePage = () => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    // Auto load all sessions when classes are loaded
-    if (classes.length > 0 && selectedClass === 'all') {
-      fetchAllSessions();
-    } else if (selectedClass !== 'all' && classes.length > 0) {
-      fetchSessionsForClass(selectedClass);
-    }
-  }, [selectedClass]); // Only depend on selectedClass
+  // Filter sessions based on selected class
+  const filteredSessions = selectedClass === 'all' 
+    ? sessions 
+    : sessions.filter(session => 
+        typeof session.classId === 'object' ? session.classId._id === selectedClass : session.classId === selectedClass
+      );
 
   const fetchData = async () => {
     try {
       setLoading(true);
       // Fetch classes first
-      const classResponse = await getAllClasses();
+      const classResponse = await getMyClasses();
       const classData = classResponse.data || [];
       setClasses(classData);
       
-      // Auto fetch all sessions after loading classes
-      if (classData.length > 0) {
-        await fetchAllSessionsForClasses(classData);
-      }
+      // Fetch all sessions directly using the new API
+      const sessionsResponse = await getMySessions();
+      const allSessions = (sessionsResponse.data || []).map(session => ({
+        ...session,
+        classInfo: typeof session.classId === 'object' ? session.classId : undefined
+      })) as ScheduleEvent[];
+      
+      setSessions(allSessions);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -60,73 +62,8 @@ const SchedulePage = () => {
     }
   };
 
-  const fetchAllSessionsForClasses = async (classData: IClass[]) => {
-    try {
-      let allSessions: ScheduleEvent[] = [];
-      
-      for (const classItem of classData) {
-        try {
-          const sessionsResponse = await getAllSessionsByClassId(classItem._id);
-          const sessionsWithClass = (sessionsResponse.data || []).map(session => ({
-            ...session,
-            classInfo: classItem
-          }));
-          allSessions = [...allSessions, ...sessionsWithClass];
-        } catch (error) {
-          console.warn(`Failed to fetch sessions for class ${classItem._id}:`, error);
-        }
-      }
-      
-      setSessions(allSessions);
-    } catch (error) {
-      console.error('Error fetching all sessions:', error);
-    }
-  };
-
-  const fetchAllSessions = async () => {
-    try {
-      let allSessions: ScheduleEvent[] = [];
-      
-      for (const classItem of classes) {
-        try {
-          const sessionsResponse = await getAllSessionsByClassId(classItem._id);
-          const sessionsWithClass = (sessionsResponse.data || []).map(session => ({
-            ...session,
-            classInfo: classItem
-          }));
-          allSessions = [...allSessions, ...sessionsWithClass];
-        } catch (error) {
-          console.warn(`Failed to fetch sessions for class ${classItem._id}:`, error);
-        }
-      }
-      
-      setSessions(allSessions);
-    } catch (error) {
-      console.error('Error fetching all sessions:', error);
-    }
-  };
-
-  const fetchSessionsForClass = async (classId: string) => {
-    try {
-      const classInfo = classes.find(c => c._id === classId);
-      if (!classInfo) {
-        console.warn(`Class not found: ${classId}`);
-        return;
-      }
-      
-      const sessionsResponse = await getAllSessionsByClassId(classId);
-      const sessionsWithClass = (sessionsResponse.data || []).map(session => ({
-        ...session,
-        classInfo
-      }));
-      setSessions(sessionsWithClass);
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    }
-  };
-
   const getSessionsForDate = (date: Dayjs) => {
-    return sessions.filter(session => 
+    return filteredSessions.filter(session => 
       dayjs(session.sessionDate).isSame(date, 'day')
     );
   };
@@ -235,7 +172,7 @@ const SchedulePage = () => {
                   whiteSpace: 'nowrap',
                   lineHeight: '8px'
                 }}>
-                  📍 {Array.isArray(classInfo.room) ? classInfo.room[0] : classInfo.room}
+                  📍 {classInfo.room}
                 </div>
               )}
             </div>
@@ -576,7 +513,7 @@ const SchedulePage = () => {
                         <Space>
                           <EnvironmentOutlined style={{ color: '#f5222d' }} />
                           <Text style={{ fontSize: 13 }}>
-                            {session.classInfo?.room?.join(', ') || 'Chưa xác định'}
+                            {session.classInfo?.room || 'Chưa xác định'}
                           </Text>
                         </Space>
 
@@ -636,7 +573,7 @@ const SchedulePage = () => {
 
                         <Space>
                           <EnvironmentOutlined style={{ color: '#f5222d' }} />
-                          <Text>{session.classInfo?.room?.join(', ') || 'Chưa xác định'}</Text>
+                          <Text>{session.classInfo?.room || 'Chưa xác định'}</Text>
                         </Space>
                       </Space>
 
@@ -811,7 +748,7 @@ const SchedulePage = () => {
                     <Text strong style={{ color: '#52c41a' }}>📍 Phòng học:</Text>
                     <br />
                     <Text style={{ fontSize: '16px', fontWeight: '500' }}>
-                      {selectedSession.classInfo?.room?.join(', ') || 'Chưa xác định'}
+                      {selectedSession.classInfo?.room || 'Chưa xác định'}
                     </Text>
                   </div>
                 </Col>

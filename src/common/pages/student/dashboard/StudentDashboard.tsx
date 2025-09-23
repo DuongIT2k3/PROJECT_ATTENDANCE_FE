@@ -30,8 +30,8 @@ import {
 import { IClass } from '../../../types/Classes';
 import { ISession } from '../../../types/Session';
 import { IAttendanceHistory } from '../../../types/Attendance';
-import { getAllClasses } from '../../../services/classServices';
-import { getAllSessionsByClassId } from '../../../services/sessionServices';
+import { getMyClasses } from '../../../services/classServices';
+import { getMySessions } from '../../../services/sessionServices';
 import { getAttendanceHistory } from '../../../services/attendanceServices';
 import { convertShiftToTime } from '../../../utils/convertShift';
 import { StatusEnum } from '../../../types';
@@ -76,29 +76,17 @@ const StudentDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch classes
-      const classResponse = await getAllClasses();
+      // Fetch classes của sinh viên
+      const classResponse = await getMyClasses();
       const classData = classResponse.data || [];
       setClasses(classData);
 
-      // Fetch sessions for all classes
-      let allSessions: TodaySession[] = [];
-      
-      for (const classItem of classData) {
-        try {
-          const sessionsResponse = await getAllSessionsByClassId(classItem._id);
-          const sessions = sessionsResponse.data || [];
-          
-          const sessionsWithClass = sessions.map(session => ({
-            ...session,
-            classInfo: classItem
-          }));
-          
-          allSessions = [...allSessions, ...sessionsWithClass];
-        } catch (error) {
-          console.warn(`Failed to fetch sessions for class ${classItem._id}:`, error);
-        }
-      }
+      // Fetch sessions của sinh viên trực tiếp
+      const sessionsResponse = await getMySessions();
+      const allSessions: TodaySession[] = (sessionsResponse.data || []).map(session => ({
+        ...session,
+        classInfo: typeof session.classId === 'object' ? session.classId as IClass : {} as IClass
+      }));
 
       // Filter today's sessions
       const today = dayjs();
@@ -270,7 +258,7 @@ const StudentDashboard = () => {
                   whiteSpace: 'nowrap',
                   lineHeight: '8px'
                 }}>
-                  📍 {Array.isArray(classInfo.room) ? classInfo.room[0] : classInfo.room}
+                  📍 {classInfo.room}
                 </div>
               )}
             </div>
@@ -607,7 +595,7 @@ const StudentDashboard = () => {
                         <Space>
                           <EnvironmentOutlined style={{ color: '#f5222d' }} />
                           <Text style={{ fontSize: 13 }}>
-                            {session.classInfo?.room?.join(', ') || 'Chưa xác định'}
+                            {session.classInfo?.room || 'Chưa xác định'}
                           </Text>
                         </Space>
                       </Space>

@@ -9,6 +9,13 @@ export const getAllClasses = async (
   return res.data;
 };
 
+export const getMyClasses = async (
+  params?: Params
+): Promise<IResponse<IClass[]>> => {
+  const res = await apiClient.get("/classes/student/my-classes", { params });
+  return res.data;
+};
+
 export const getDetailClass = async (
   id: string
 ): Promise<IResponse<IClass>> => {
