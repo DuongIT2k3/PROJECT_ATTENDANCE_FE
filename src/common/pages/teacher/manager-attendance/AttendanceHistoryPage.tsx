@@ -165,10 +165,14 @@ const AttendanceHistoryPage = () => {
       render: (_: any, record: IAttendanceHistory) => (
         <div>
           <div style={{ fontWeight: 500 }}>
-            {typeof record.studentId === "object" ? record.studentId.fullname : "N/A"}
+            {typeof record.studentId === "object" && record.studentId?.fullname 
+              ? record.studentId.fullname 
+              : "N/A"}
           </div>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {typeof record.studentId === "object" ? record.studentId.studentId : "N/A"}
+            {typeof record.studentId === "object" && record.studentId?.studentId 
+              ? record.studentId.studentId 
+              : "N/A"}
           </Text>
         </div>
       ),
